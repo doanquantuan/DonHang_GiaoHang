@@ -16,6 +16,8 @@ import vn.com.service.OrderService;
 @RequestMapping("/api/orders")
 @CrossOrigin("*")
 public class OrderController {
+    @Autowired
+    private OrderService orderService;
     @PostMapping
     public ResponseEntity<?> createOrder(@RequestBody OrderDto orderDto) {
         try {

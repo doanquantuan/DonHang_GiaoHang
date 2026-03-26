@@ -1,0 +1,2 @@
+### Lấy danh sách tất cả đơn hàng
+GET http://localhost:8080/api/orders

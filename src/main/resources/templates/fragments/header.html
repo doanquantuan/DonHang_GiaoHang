@@ -1,0 +1,23 @@
+<header th:fragment="header" class="navbar">
+    <button class="nav-burger" onclick="toggleDrawer()" aria-label="Menu">☰</button>
+
+    <a class="nav-brand" href="#" onclick="return false;">
+        <div class="nav-logo">🚚</div>
+        <span class="nav-name">Delivery<em>Mgr</em></span>
+    </a>
+
+    <nav class="nav-links">
+        <a th:href="@{/dashboard}" class="nav-link">Dashboard</a>
+        <a th:href="@{/orders}" href="/orders" class="nav-link">Đơn hàng</a>
+        <a th:href="@{/deliveries}" href="/deliveries" class="nav-link">Giao hàng</a>
+    </nav>
+
+    <div class="nav-spacer"></div>
+
+    <div class="nav-right">
+        <button class="nav-user" onclick="logout()" title="Bấm để đăng xuất">
+            <div class="nav-avatar" id="navAvatar">A</div>
+            <span class="nav-uname" id="navUsername">Admin</span>
+        </button>
+    </div>
+</header>

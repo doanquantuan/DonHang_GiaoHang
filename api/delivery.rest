@@ -1,0 +1,8 @@
+### Cập nhật trạng thái (Update Status)  
+PATCH http://localhost:8080/api/v1/deliveries/1/status
+Content-Type: application/json
+
+{
+  "status": "DELIVERING",
+  "note": "Tài xế C ok lấy hàng và đang trên đường đi"
+}

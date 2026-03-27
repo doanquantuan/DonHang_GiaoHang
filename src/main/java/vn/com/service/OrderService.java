@@ -17,8 +17,10 @@ import java.util.List;
 
 @Service
 public class OrderService {
+
     @Autowired
     private OrderRepository orderRepository;
+
     @Transactional
     public Order createNewOrder(OrderDto dto) {
         
@@ -68,8 +70,67 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    @Transactional(readOnly = true)
+    public List<Order> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        // Force load delivery và orderDetails trong transaction để tránh LazyLoading
+        orders.forEach(o -> {
+            if (o.getDelivery() != null) o.getDelivery().getId();
+            if (o.getOrderDetails() != null) o.getOrderDetails().size();
+        });
+        return orders;
+    }
+
+    @Transactional(readOnly = true)
     public Order getOrderById(Long id) {
-        return orderRepository.findById(id)
+        Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + id));
+        // Force load delivery trong transaction để tránh LazyLoading
+        if (order.getDelivery() != null) order.getDelivery().getId();
+        if (order.getOrderDetails() != null) order.getOrderDetails().size();
+        return order;
+    }
+
+    @Transactional
+    public Order updateOrder(Long id, OrderDto dto) {
+        Order order = getOrderById(id);
+        
+        order.setCustomerName(dto.getCustomerName());
+        order.setPhone(dto.getPhone());
+        order.setEmail(dto.getEmail());
+        order.setAddress(dto.getAddress());
+        order.setPaymentMethod(dto.getPaymentMethod());
+        order.setPaymentStatus(dto.getPaymentStatus());
+        order.setShippingFee(dto.getShippingFee() != null ? dto.getShippingFee() : 0.0);
+        order.setDiscount(dto.getDiscount() != null ? dto.getDiscount() : 0.0);
+
+        if (dto.getOrderDetails() != null) {
+            order.getOrderDetails().clear();
+            double totalProductAmount = 0.0;
+            for (OrderDto.OrderDetailDto detailDto : dto.getOrderDetails()) {
+                OrderDetail detail = new OrderDetail();
+                detail.setProductName(detailDto.getProductName());
+                detail.setQuantity(detailDto.getQuantity());
+                detail.setPrice(detailDto.getPrice());
+                detail.setOrder(order);
+                order.getOrderDetails().add(detail);
+                totalProductAmount += (detail.getPrice() * detail.getQuantity());
+            }
+            order.setTotalAmount(totalProductAmount + order.getShippingFee() - order.getDiscount());
+        }
+
+        if (order.getDelivery() != null) {
+            Delivery delivery = order.getDelivery();
+            delivery.setNote(dto.getDeliveryNote());
+            delivery.setExpectedTime(dto.getExpectedTime());
+            delivery.setShipperName(dto.getShipperName());
+        }
+
+        return orderRepository.save(order);
+    }
+    @Transactional
+    public void deleteOrder(Long id) {
+        Order order = getOrderById(id);
+        orderRepository.delete(order);
     }
 }

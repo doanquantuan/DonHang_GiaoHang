@@ -1,0 +1,12 @@
+### Phân công giao hàng (Create Delivery)  
+POST http://localhost:8080/api/v1/deliveries
+Content-Type: application/json
+
+{
+  "orderId": 1,
+  "shipperName": "Trần Văn C",
+  "shipperPhone": "0901234567",
+  "vehicleInfo": "Xe máy Honda Wave, biển số 59X1-23456",
+  "expectedTime": "2026-03-20T14:00:00",
+  "note": "Giao hàng cẩn thận, tránh va chạm"
+}

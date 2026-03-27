@@ -33,4 +33,14 @@ public class OrderController {
         return response;
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getOrderById(@PathVariable Long id) {
+        try {
+            Order order = orderService.getOrderById(id);
+            return ResponseEntity.ok(order);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createMessage("Không tìm thấy đơn hàng với ID: " + id));
+        }
+    }
+
 }

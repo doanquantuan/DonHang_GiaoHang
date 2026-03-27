@@ -33,4 +33,16 @@ public class OrderController {
         return response;
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteOrder(@PathVariable Long id) {
+        try {
+            orderService.deleteOrder(id);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Đã xóa thành công đơn hàng!");
+            response.put("orderId", id.toString());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createMessage("Xóa thất bại! Đơn hàng ID " + id + " không tồn tại."));
+        }
+    }
 }

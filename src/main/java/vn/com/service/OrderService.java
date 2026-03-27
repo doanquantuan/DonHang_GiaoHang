@@ -67,4 +67,13 @@ public class OrderService {
 
         return orderRepository.save(order);
     }
+    public Order getOrderById(Long id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + id));
+    }
+    @Transactional
+    public void deleteOrder(Long id) {
+        Order order = getOrderById(id);
+        orderRepository.delete(order);
+    }
 }

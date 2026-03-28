@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Chi tiết đơn hàng – DeliveryMgr</title>
+</head>
+<body>
+
+<!-- Topbar standalone (chỉ hiển thị khi mở file trực tiếp; Thymeleaf layout sẽ thay thế phần này) -->
+<nav class="topbar" th:remove="all">
+  <a class="topbar-brand" href="/">
+    <i class="bi bi-truck" style="font-size:18px"></i> DeliveryMgr
+  </a>
+  <div class="topbar-nav">
+    <a href="/orders" class="active">Đơn hàng</a>
+    <a href="/deliveries">Giao hàng</a>
+    <a href="/users">Người dùng</a>
+  </div>
+</nav>
+
+<div th:replace="~{fragments/layout :: main('Chi tiết đơn hàng – DeliveryMgr', ~{::div.content})}">
+
+  <div class="content">
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+      <a href="/orders">Đơn hàng</a>
+      <i class="bi bi-chevron-right" style="font-size:10px"></i>
+      <span id="breadcrumbCurrent">Chi tiết</span>
+    </div>
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title" id="pageTitle">Chi tiết đơn hàng...</h1>
+        <span class="status-badge badge-NEW" id="statusBadge">Đang tải...</span>
+      </div>
+      <div class="page-header-actions">
+        <a href="#" id="btnEdit" class="btn btn-outline">
+          <i class="bi bi-pencil"></i> Chỉnh sửa
+        </a>
+        <button class="btn btn-danger-outline" onclick="deleteOrder()">
+          <i class="bi bi-trash3"></i> Xóa đơn
+        </button>
+        <button class="btn btn-print" onclick="window.print()">
+          <i class="bi bi-printer"></i> In phiếu giao
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading skeleton -->
+    <div id="mainSkeleton">
+      <div class="skeleton" style="height:180px;margin-bottom:16px;border-radius:8px"></div>
+      <div class="skeleton" style="height:280px;border-radius:8px"></div>
+    </div>
+
+    <!-- Main layout -->
+    <div class="detail-layout" id="mainLayout" style="display:none">
+
+      <!-- ══════ CỘT TRÁI ══════ -->
+      <div>
+
+        <!-- Thông tin khách hàng -->
+        <div class="panel">
+          <div class="panel-header">Thông tin khách hàng</div>
+          <div class="panel-body">
+            <div class="info-grid c2">
+              <div class="info-item">
+                <span class="info-label">Họ tên</span>
+                <span class="info-val" id="iCustomerName">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Số điện thoại</span>
+                <span class="info-val" id="iPhone">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Email</span>
+                <span class="info-val" id="iEmail">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Ngày tạo đơn</span>
+                <span class="info-val" id="iCreatedAt">—</span>
+              </div>
+              <div class="info-item full">
+                <span class="info-label">Địa chỉ giao hàng</span>
+                <span class="info-val" id="iAddress">—</span>
+              </div>
+              <div class="info-item full" id="noteRow" style="display:none">
+                <span class="info-label">Ghi chú</span>
+                <span class="info-val note-val" id="iNote">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sản phẩm trong đơn -->
+        <div class="panel">
+          <div class="panel-header">Sản phẩm trong đơn</div>
+          <div class="panel-body" style="padding:0">
+            <table class="ptable">
+              <thead>
+                <tr>
+                  <th style="width:42px;text-align:center">#</th>
+                  <th>Tên sản phẩm</th>
+                  <th style="width:90px;text-align:center">Số lượng</th>
+                  <th style="width:120px;text-align:right">Đơn giá</th>
+                  <th style="width:125px;text-align:right">Thành tiền</th>
+                </tr>
+              </thead>
+              <tbody id="productTbody">
+                <tr><td colspan="5" class="empty-row">Đang tải...</td></tr>
+              </tbody>
+            </table>
+            <div class="summary-section">
+              <div class="srow"><span>Tạm tính:</span><span id="iSubtotal">—</span></div>
+              <div class="srow"><span>Phí giao:</span><span id="iShippingFee">—</span></div>
+              <div class="srow" id="discountRow" style="display:none">
+                <span>Giảm giá:</span><span id="iDiscount" style="color:var(--danger);font-weight:600">—</span>
+              </div>
+              <div class="stotal">
+                <span>Tổng cộng:</span><span id="iTotal">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════ CỘT PHẢI ══════ -->
+      <div>
+
+
+
+        <!-- Trạng thái đơn hàng (chỉ xem) -->
+        <div class="panel">
+          <div class="panel-header">Trạng thái đơn hàng</div>
+          <div class="panel-body" style="padding:14px 16px">
+            <span class="status-badge-lg" id="statusBadgeLg">Đang tải...</span>
+          </div>
+        </div>
+
+        <!-- Tài xế giao hàng -->
+        <div class="panel">
+          <div class="panel-header">Tài xế giao hàng</div>
+          <div class="panel-body">
+            <!-- Thông tin tài xế hiện tại -->
+            <div id="shipperInfo" style="display:none;margin-bottom:12px">
+              <div class="shipper-card">
+                <div class="shipper-avatar" id="shipperAvatar">TX</div>
+                <div class="shipper-detail">
+                  <div class="shipper-name" id="iShipperName">—</div>
+                  <div class="shipper-meta">SĐT: <span id="iShipperPhone">—</span></div>
+                  <div class="shipper-meta">Xe: <span id="iVehicle">—</span></div>
+                </div>
+              </div>
+            </div>
+            <div id="shipperEmpty" class="empty-shipper">
+              <i class="bi bi-person-x" style="font-size:22px;color:var(--gray-400)"></i>
+              <span>Chưa phân công tài xế</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Thanh toán -->
+        <div class="panel">
+          <div class="panel-header">Thanh toán</div>
+          <div class="panel-body">
+            <div class="info-item" style="margin-bottom:10px">
+              <span class="info-label">Hình thức</span>
+              <span class="info-val" id="iPayMethod">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Trạng thái</span>
+              <span id="iPayStatus" class="pay-badge pay-unpaid">Chưa thu</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div><!-- /detail-layout -->
+
+    <!-- Error state -->
+    <div id="errorState" style="display:none;text-align:center;padding:60px 20px;color:var(--danger)">
+      <i class="bi bi-exclamation-triangle" style="font-size:36px;display:block;margin-bottom:12px"></i>
+      <p id="errorMsg" style="font-size:14px;font-weight:600">Không tải được dữ liệu</p>
+      <a href="/orders" style="display:inline-flex;align-items:center;gap:6px;margin-top:20px;
+        padding:8px 18px;border-radius:6px;border:1.5px solid #dee2e6;color:#495057;
+        font-weight:700;text-decoration:none;font-size:13px">
+        <i class="bi bi-arrow-left"></i> Quay lại danh sách
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&subset=vietnamese&display=swap');
+:root{
+  --white:#ffffff;
+  --gray-50:#f8f9fa;
+  --gray-100:#f1f3f5;
+  --gray-200:#e9ecef;
+  --gray-300:#dee2e6;
+  --gray-400:#ced4da;
+  --gray-500:#adb5bd;
+  --gray-600:#6c757d;
+  --gray-700:#495057;
+  --gray-800:#343a40;
+  --gray-900:#212529;
+  --primary:#1a56db;
+  --primary-light:#e8f0fe;
+  --danger:#dc3545;
+  --danger-light:#fff5f5;
+  --success:#198754;
+  --success-light:#d1e7dd;
+  --warning:#fd7e14;
+  --radius:6px;
+  --shadow:0 2px 8px rgba(0,0,0,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:var(--gray-100);color:var(--gray-800);font-size:14px;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--gray-900);color:#fff;display:flex;align-items:center;height:48px;position:sticky;top:0;z-index:200;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.topbar-brand{display:flex;align-items:center;gap:8px;padding:0 20px;height:100%;font-weight:800;font-size:15px;border-right:1px solid rgba(255,255,255,.12);white-space:nowrap;text-decoration:none;color:#fff}
+.topbar-nav{display:flex;height:100%}
+.topbar-nav a{display:flex;align-items:center;padding:0 18px;color:rgba(255,255,255,.65);font-size:13.5px;font-weight:600;text-decoration:none;height:100%;transition:all .15s;border-bottom:2px solid transparent}
+.topbar-nav a:hover{color:#fff;background:rgba(255,255,255,.06)}
+.topbar-nav a.active{color:#fff;border-bottom-color:var(--primary)}
+
+/* CONTENT */
+.content{max-width:1160px;margin:0 auto;padding:22px 20px 60px}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--gray-500);margin-bottom:6px}
+.breadcrumb a{color:var(--gray-600);text-decoration:none}
+.breadcrumb a:hover{color:var(--primary)}
+
+/* PAGE HEADER */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.page-header-left{display:flex;flex-direction:column;gap:6px}
+.page-title{font-size:28px;font-weight:800;color:var(--text-1);line-height:1.2;margin-bottom:4px}
+.page-header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* STATUS BADGE */
+.status-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid transparent}
+.badge-NEW       {background:#e8f0fe;color:#1a56db;border-color:#b6ccf7}
+.badge-CONFIRMED {background:#fff3cd;color:#856404;border-color:#ffe08a}
+.badge-PROCESSING{background:#fff3cd;color:#856404;border-color:#ffe08a}
+.badge-SHIPPING  {background:#cff4fc;color:#0a7899;border-color:#9ee8f8}
+.badge-COMPLETED {background:var(--success-light);color:var(--success);border-color:#a3cfbb}
+.badge-CANCELLED {background:var(--danger-light);color:var(--danger);border-color:#f5c6cb}
+.badge-DONE      {background:var(--success-light);color:var(--success);border-color:#a3cfbb}
+.badge-CANCEL    {background:var(--danger-light);color:var(--danger);border-color:#f5c6cb}
+
+/* LAYOUT */
+.detail-layout{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+
+/* PANEL */
+.panel{background:var(--white);border:1px solid var(--gray-300);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.panel:last-child{margin-bottom:0}
+.panel-header{padding:10px 16px;border-bottom:1.5px dashed var(--gray-200);font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gray-600)}
+.panel-body{padding:16px}
+
+/* INFO GRID */
+.info-grid{display:grid;gap:14px}
+.info-grid.c2{grid-template-columns:1fr 1fr}
+.info-item{display:flex;flex-direction:column;gap:3px}
+.info-item.full{grid-column:1/-1}
+.info-label{font-size:11.5px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px}
+.info-val{font-size:13.5px;font-weight:600;color:var(--gray-800)}
+.note-val{font-style:italic;color:var(--gray-600);font-weight:400}
+
+/* PRODUCT TABLE */
+.ptable{width:100%;border-collapse:collapse;font-size:13px}
+.ptable thead th{background:var(--gray-50);padding:9px 12px;text-align:left;font-weight:700;font-size:12px;color:var(--gray-600);border-bottom:1.5px solid var(--gray-200)}
+.ptable tbody tr{border-bottom:1px solid var(--gray-200)}
+.ptable tbody tr:last-child{border-bottom:none}
+.ptable tbody td{padding:9px 12px;vertical-align:middle}
+.empty-row{text-align:center;padding:24px;color:var(--gray-500);font-style:italic}
+
+/* SUMMARY */
+.summary-section{padding:14px 16px;border-top:1px solid var(--gray-200)}
+.srow{display:flex;justify-content:space-between;font-size:13px;color:var(--gray-600);margin-bottom:7px}
+.stotal{display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:var(--gray-900);border-top:1.5px solid var(--gray-300);padding-top:10px;margin-top:4px}
+
+/* SELECT */
+select{width:100%;border:1px solid var(--gray-400);border-radius:var(--radius);padding:8px 10px;font-family:inherit;font-size:13.5px;color:var(--gray-800);background:var(--white);outline:none;transition:border-color .15s,box-shadow .15s;cursor:pointer}
+select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,86,219,.12)}
+
+/* SHIPPER */
+.empty-shipper{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;color:var(--gray-500);font-size:13px;margin-bottom:4px}
+.shipper-card{display:flex;align-items:center;gap:12px;padding:10px;background:var(--gray-50);border-radius:var(--radius);border:1px solid var(--gray-200)}
+.shipper-avatar{width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.shipper-name{font-size:13.5px;font-weight:700;color:var(--gray-900);margin-bottom:2px}
+.shipper-meta{font-size:12px;color:var(--gray-500)}
+
+/* PAYMENT BADGE */
+.pay-badge{display:inline-flex;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid transparent}
+.pay-paid  {background:var(--success-light);color:var(--success);border-color:#a3cfbb}
+.pay-unpaid{background:#fff3cd;color:#856404;border-color:#ffe08a}
+.status-badge-lg{display:inline-flex;align-items:center;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:800;border:1.5px solid transparent}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;border:none;text-decoration:none}
+.btn-outline{background:var(--white);border:1.5px solid var(--gray-400);color:var(--gray-700)}
+.btn-outline:hover{border-color:var(--gray-600);color:var(--gray-900)}
+.btn-danger-outline{background:var(--white);border:1.5px solid #f5c6cb;color:var(--danger)}
+.btn-danger-outline:hover{background:var(--danger-light);border-color:var(--danger)}
+.btn-print{background:var(--gray-900);border:1.5px solid var(--gray-900);color:#fff}
+.btn-print:hover{background:#000}
+
+
+/* LOADING SKELETON */
+.skeleton{background:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:var(--radius)}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+@media(max-width:860px){
+  .detail-layout{grid-template-columns:1fr}
+  .info-grid.c2{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .info-grid.c2{grid-template-columns:1fr}
+  .page-header{flex-direction:column}
+}
+</style>
+
+<script>
+/* ─── CONFIG ─────────────────────────────────────────────
+   Spring Boot: const API_BASE = '';
+   Test file:   const API_BASE = 'http://localhost:8080';
+──────────────────────────────────────────────────────── */
+const API_BASE   = '';
+const ORDERS_URL = '/orders';
+
+/* ─── LẤY ORDER ID TỪ URL ─── */
+function getOrderId() {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const idx   = parts.indexOf('orders');
+  if (idx !== -1 && parts[idx + 1]) return parts[idx + 1];
+  return new URLSearchParams(window.location.search).get('id');
+}
+const ORDER_ID = getOrderId();
+let currentOrder = null;
+
+const STATUS_LABEL = {
+  NEW      : 'Mới tạo',
+  CONFIRMED: 'Đã xác nhận',
+  COMPLETED: 'Hoàn thành',
+  CANCELLED: 'Đã huỷ',
+  // Legacy values từ delivery module
+  PROCESSING: 'Đang lấy hàng',
+  SHIPPING  : 'Đang giao',
+  DONE      : 'Hoàn thành',
+  CANCEL    : 'Đã huỷ'
+};
+
+/* ─── LOAD ORDER ─── */
+async function loadOrder() {
+  if (!ORDER_ID) { showError('Không tìm thấy ID đơn hàng trong URL!'); return; }
+  try {
+    const res  = await fetch(API_BASE + '/api/orders/' + ORDER_ID);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (data.message) throw new Error(data.message);
+    currentOrder = data;
+    renderPage(data);
+  } catch {
+    showError('Không tải được đơn hàng ID: ' + ORDER_ID + '. Kiểm tra backend đang chạy.');
+  }
+}
+
+/* ─── RENDER PAGE ─── */
+function renderPage(d) {
+  // Breadcrumb & title
+  setText('breadcrumbCurrent', `DH-${d.id}`);
+  setText('pageTitle', `Chi tiết đơn hàng #DH-${d.id}`);
+  document.getElementById('btnEdit').href = `/orders/${d.id}/edit`;
+
+  // Status badge (header) + readonly status panel
+  const badgeEl = document.getElementById('statusBadge');
+  badgeEl.textContent = STATUS_LABEL[d.status] || d.status;
+  badgeEl.className   = `status-badge badge-${d.status}`;
+  const lgBadge = document.getElementById('statusBadgeLg');
+  if (lgBadge) {
+    lgBadge.textContent = STATUS_LABEL[d.status] || d.status;
+    lgBadge.className   = `status-badge-lg badge-${d.status}`;
+  }
+
+  // Thông tin khách hàng
+  setText('iCustomerName', d.customerName);
+  setText('iPhone',        d.phone);
+  setText('iEmail',        d.email || '—');
+  setText('iAddress',      d.address);
+
+  // Ngày tạo
+  if (d.createdAt) {
+    const dt = new Date(d.createdAt);
+    const pad = n => String(n).padStart(2,'0');
+    setText('iCreatedAt', `${pad(dt.getDate())}/${pad(dt.getMonth()+1)} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`);
+  } else { setText('iCreatedAt', '—'); }
+
+  // Ghi chú
+  const note = d.deliveryNote || d.delivery?.note || '';
+  if (note) {
+    setText('iNote', note);
+    document.getElementById('noteRow').style.display = '';
+  }
+
+  // Sản phẩm
+  renderProducts(d.orderDetails || [], d.shippingFee || 0, d.discount || 0, d.totalAmount);
+
+  // Tài xế
+  renderShipper(d);
+
+  // Thanh toán
+  setText('iPayMethod', d.paymentMethod || '—');
+  const isPaid = d.paymentStatus === 'Đã thanh toán' || d.paymentStatus === 'PAID' || d.status === 'COMPLETED';
+  const payEl  = document.getElementById('iPayStatus');
+  payEl.textContent = isPaid ? 'Đã thanh toán' : 'Chưa thu';
+  payEl.className   = 'pay-badge ' + (isPaid ? 'pay-paid' : 'pay-unpaid');
+
+  // Hiện layout
+  document.getElementById('mainSkeleton').style.display = 'none';
+  document.getElementById('mainLayout').style.display   = 'grid';
+}
+
+/* ─── RENDER PRODUCTS ─── */
+function renderProducts(items, shippingFee, discount, totalAmount) {
+  const tbody = document.getElementById('productTbody');
+  if (items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-row">Không có sản phẩm</td></tr>`;
+  } else {
+    tbody.innerHTML = items.map((it, i) => {
+      const sub = (it.quantity || 0) * (it.price || 0);
+      return `<tr>
+        <td style="text-align:center;color:var(--gray-500);font-weight:600">${i + 1}</td>
+        <td style="font-weight:600">${esc(it.productName || '—')}</td>
+        <td style="text-align:center">${it.quantity || 0}</td>
+        <td style="text-align:right;color:var(--gray-600)">${fmt(it.price || 0)}</td>
+        <td style="text-align:right;font-weight:700;color:var(--gray-900)">${fmt(sub)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  const sub = items.reduce((s, it) => s + (it.quantity||0) * (it.price||0), 0);
+  setText('iSubtotal',    fmt(sub));
+  setText('iShippingFee', fmt(shippingFee));
+
+  if (discount && discount > 0) {
+    setText('iDiscount', '– ' + fmt(discount));
+    document.getElementById('discountRow').style.display = '';
+  }
+
+  const total = totalAmount != null ? totalAmount : (sub + shippingFee - (discount || 0));
+  setText('iTotal', fmt(total));
+}
+
+/* ─── RENDER SHIPPER ─── */
+function renderShipper(d) {
+  const name    = d.delivery?.shipperName  || d.shipperName  || '';
+  const phone   = d.delivery?.shipperPhone || d.shipperPhone || '';
+  const vehicle = d.delivery?.vehicleInfo  || d.vehicleInfo  || '';
+
+  if (name) {
+    const initials = name.split(' ').slice(-2).map(w => w[0]?.toUpperCase() || '').join('');
+    setText('shipperAvatar', initials || 'TX');
+    setText('iShipperName',  name);
+    setText('iShipperPhone', phone   || '—');
+    setText('iVehicle',      vehicle || '—');
+    document.getElementById('shipperInfo').style.display  = 'block';
+    document.getElementById('shipperEmpty').style.display = 'none';
+  } else {
+    document.getElementById('shipperInfo').style.display  = 'none';
+    document.getElementById('shipperEmpty').style.display = 'flex';
+  }
+}
+
+/* ─── LOAD SHIPPERS COMBOBOX ─── */
+/* ─── XÓA ĐƠN ─── */
+async function deleteOrder() {
+  if (!confirm(`Bạn có chắc muốn xóa đơn hàng #DH-${ORDER_ID}?\nThao tác này không thể hoàn tác.`)) return;
+  try {
+    const res = await fetch(API_BASE + '/api/orders/' + ORDER_ID, { method:'DELETE' });
+    if (res.ok || res.status === 204) {
+      showToast('✅ Đã xóa đơn hàng!', 'success');
+      setTimeout(() => window.location.href = ORDERS_URL, 1400);
+    } else { showToast('❌ Xóa đơn thất bại!', 'error'); }
+  } catch { showToast('❌ Không kết nối được server!', 'error'); }
+}
+
+/* ─── HELPERS ─── */
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; }
+function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n||0) + 'đ'; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showError(msg) {
+  document.getElementById('mainSkeleton').style.display = 'none';
+  document.getElementById('mainLayout').style.display   = 'none';
+  document.getElementById('errorState').style.display   = 'block';
+  document.getElementById('errorMsg').textContent        = msg;
+}
+
+function showToast(msg, type) {
+  if (typeof window._layoutShowToast === 'function') {
+    window._layoutShowToast(msg, type);
+  } else {
+    let t = document.getElementById('_sToast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = '_sToast';
+      t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:13.5px;font-weight:700;color:#fff;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:opacity .3s';
+      document.body.appendChild(t);
+    }
+    t.textContent      = msg;
+    t.style.background = type === 'success' ? '#198754' : '#dc3545';
+    t.style.opacity    = '1';
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+  }
+}
+
+/* ─── INIT ─── */
+loadOrder();
+</script>
+
+</body>
+</html>

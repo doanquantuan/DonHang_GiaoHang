@@ -28,3 +28,6 @@ Content-Type: application/json
     }
   ]
 }
+
+### Lấy thông tin chi tiết của đơn hàng có ID = 1
+GET http://localhost:8080/api/orders/1

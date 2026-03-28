@@ -1,28 +1,23 @@
-### Tạo đơn hàng mới
-POST http://localhost:8080/api/orders
+### Cập nhật thông tin đơn hàng có ID = 1
+PUT http://localhost:8080/api/orders/1
 Content-Type: application/json
 
 {
-  "customerName": "Nguyễn Văn A",
-  "phone": "0901234567",
-  "email": "nguyenvana@example.com",
-  "address": "123 Đường Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM",
-  "paymentMethod": "COD",
-  "paymentStatus": "UNPAID",
-  "deliveryNote": "Giao vào giờ hành chính, nhớ gọi trước khi giao",
-  "expectedTime": "2026-03-20T10:00:00",
-  "shippingFee": 30000.0,
-  "discount": 15000.0,
+  "customerName": "Nguyễn Văn A - Cập nhật",
+  "phone": "0988888888",
+  "email": "a_update@example.com",
+  "address": "456 Đường Trần Hưng Đạo, Quận 5, TP.HCM",
+  "paymentMethod": "BANK_TRANSFER",
+  "paymentStatus": "PAID",
+  "deliveryNote": "Đã thanh toán qua ngân hàng, giao gấp",
+  "expectedTime": "2026-03-21T09:00:00",
+  "shippingFee": 20000.0,
+  "discount": 50000.0,
   "orderDetails": [
     {
-      "productName": "Bàn phím cơ Logitech",
+      "productName": "Màn hình Dell UltraSharp",
       "quantity": 1,
-      "price": 1500000.0
-    },
-    {
-      "productName": "Chuột không dây",
-      "quantity": 2,
-      "price": 300000.0
+      "price": 8500000.0
     }
   ]
 }

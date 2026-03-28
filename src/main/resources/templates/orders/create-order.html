@@ -342,8 +342,10 @@ function addRow() {
   tr.id = 'row-' + id;
   tr.innerHTML = `
     <td class="cn"><input type="text" placeholder="Nhập tên SP..."/></td>
-    <td class="cq"><input type="number" value="1" min="1" oninput="calcRow(${id})"/></td>
-    <td class="cp"><input type="number" value="0" min="0" step="1000" oninput="calcRow(${id})"/></td>
+    <td class="cq"><input type="number" value="1" min="1"
+        oninput="clampMin(this,1); calcRow(${id})"/></td>
+    <td class="cp"><input type="number" value="0" min="0" step="1000"
+        oninput="clampMin(this,0); calcRow(${id})"/></td>
     <td class="ct" id="rt-${id}">0đ</td>
     <td class="cd">
       <button class="btn-del" type="button" onclick="delRow(${id})"><i class="bi bi-x"></i></button>
@@ -379,15 +381,42 @@ function calcSummary() {
 
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n) + 'đ'; }
 
+/* ─── CLAMP: ép số về min nếu nhập âm hoặc rỗng ─── */
+function clampMin(el, min) {
+  const v = parseFloat(el.value);
+  if (isNaN(v) || v < min) el.value = min;
+}
+
 /* ─── VALIDATE ─── */
 function validate() {
   let ok = true;
+
+  // Kiểm tra trường bắt buộc
   ['customerName','phone','address'].forEach(id => {
     const el = document.getElementById(id);
     if (!el.value.trim()) { el.classList.add('invalid'); ok = false; }
     else el.classList.remove('invalid');
   });
-  if (!ok) showToast('Vui lòng điền đầy đủ các trường bắt buộc (*)', 'err');
+
+  // Kiểm tra sản phẩm: số lượng ≥ 1, đơn giá ≥ 0
+  let productErr = false;
+  document.querySelectorAll('#ptbody tr').forEach(r => {
+    const ns  = r.querySelectorAll('input[type=number]');
+    const qty   = parseFloat(ns[0]?.value);
+    const price = parseFloat(ns[1]?.value);
+    if (qty < 1 || isNaN(qty)) {
+      ns[0]?.classList.add('invalid'); productErr = true;
+    } else { ns[0]?.classList.remove('invalid'); }
+    if (price < 0 || isNaN(price)) {
+      ns[1]?.classList.add('invalid'); productErr = true;
+    } else { ns[1]?.classList.remove('invalid'); }
+  });
+  if (productErr) {
+    showToast('Số lượng phải ≥ 1 và đơn giá không được âm', 'err');
+    ok = false;
+  }
+
+  if (!ok && !productErr) showToast('Vui lòng điền đầy đủ các trường bắt buộc (*)', 'err');
   return ok;
 }
 
@@ -399,8 +428,8 @@ function buildPayload() {
     const nums   = r.querySelectorAll('input[type=number]');
     rows.push({
       productName: nameEl?.value.trim() || '',
-      quantity   : parseInt(nums[0]?.value) || 0,
-      price      : parseFloat(nums[1]?.value) || 0
+      quantity   : Math.max(1, parseInt(nums[0]?.value) || 1),
+      price      : Math.max(0, parseFloat(nums[1]?.value) || 0)
     });
   });
   const tf = document.getElementById('timeFrom').value;

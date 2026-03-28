@@ -1,23 +1,18 @@
 package vn.com.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import vn.com.enums.DeliveryStatus;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class DeliveryDto {
-
-    @Data
-    public static class CreateDeliveryRequest {
-        private Long orderId;         
-        private String shipperName;    
-        private String shipperPhone;   
-        private String vehicleInfo;    
-        private String expectedTime;   
-        private String note;           
-    }
-
-    @Data
-    public static class UpdateStatusRequest {
-        private DeliveryStatus status; 
-        private String note;           
-    }
+    private Long    orderId;       // bắt buộc - đơn hàng cần giao
+    private String  shipperName;   // bắt buộc - tên tài xế
+    private String  shipperPhone;  // SĐT tài xế
+    private String  vehicleInfo;   // biển số xe
+    private String  expectedTime;  // thời gian giao dự kiến
+    private String  note;          // ghi chú
+    private String  status;        // WAITING | DELIVERING | DONE | FAILED
 }

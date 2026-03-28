@@ -23,6 +23,7 @@ public class DeliveryService {
     @Autowired
     private OrderRepository orderRepository;
 
+  
     @Transactional(readOnly = true)
     public List<Delivery> getAllDeliveries() {
         List<Delivery> list = deliveryRepository.findAll();
@@ -178,5 +179,3 @@ public class DeliveryService {
     }
 
 }
- 
-

@@ -164,6 +164,6 @@ public class DeliveryService {
     private DeliveryStatus parseDeliveryStatus(String s, DeliveryStatus fallback) {
         if (s == null || s.isBlank()) return fallback;
         try { return DeliveryStatus.valueOf(s.trim().toUpperCase()); }
-        catch (IllegalArgumentException e) { return fallback; }
+        catch (IllegalArgumentException e) { return fallback; } 
     }
 }

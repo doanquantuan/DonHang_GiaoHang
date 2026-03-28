@@ -46,7 +46,19 @@ public class DeliveryController {
         }
     }
 
-   
+    // Cập nhật trạng thái delivery (và đồng bộ OrderStatus)
+    // Body: { "status": "DELIVERING" }
+    //    hoặc { "status": "WAITING", "shipperName": "Tên tài xế" } 
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(@PathVariable Long id,
+                                          @RequestBody Map<String, String> body) {
+        try {
+            Delivery d = deliveryService.updateDeliveryStatus(id, body);
+            return ResponseEntity.ok(toMap(d));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(msg(e.getMessage()));
+        }
+    }
 
     // Xoá chuyến giao
     @DeleteMapping("/{id}")

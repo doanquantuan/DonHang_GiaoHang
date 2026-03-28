@@ -6,7 +6,7 @@ import vn.com.entity.Delivery;
 import vn.com.enums.DeliveryStatus;
 import java.util.List;
 import java.util.Optional;
-
+import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DeliveryRepository extends JpaRepository<Delivery, Long> {

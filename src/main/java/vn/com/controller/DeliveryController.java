@@ -40,7 +40,7 @@ public class DeliveryController {
 
     // Cập nhật trạng thái delivery (và đồng bộ OrderStatus)
     // Body: { "status": "DELIVERING" }
-    //    hoặc { "status": "WAITING", "shipperName": "Tên tài xế" }
+    //    hoặc { "status": "WAITING", "shipperName": "Tên tài xế" } 
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Long id,
                                           @RequestBody Map<String, String> body) {

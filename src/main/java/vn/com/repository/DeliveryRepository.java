@@ -10,4 +10,4 @@ import vn.com.entity.Delivery;
 public interface DeliveryRepository extends JpaRepository<Delivery, Long>{
     boolean existsByOrder_Id(Long orderId);
     Optional<Delivery> findByOrder_Id(Long orderId);
-}
+} 

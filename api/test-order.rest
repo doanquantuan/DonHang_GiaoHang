@@ -1,3 +1,5 @@
+### Lấy danh sách tất cả đơn hàng
+GET http://localhost:8080/api/orders
 ### Tạo đơn hàng mới
 POST http://localhost:8080/api/orders
 Content-Type: application/json

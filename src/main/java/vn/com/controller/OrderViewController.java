@@ -19,11 +19,13 @@ public class OrderViewController {
         return "orders/create-order";   // → templates/orders/create-order.html
     }
 
+    // OR-24: View Order Detail Page
     @GetMapping("/{id}")
     public String orderDetail(@PathVariable Long id) {
         return "orders/order-detail";   // → templates/orders/order-detail.html
     }
 
+    // OR-32: Update Order Page (sẽ làm sau)
     @GetMapping("/{id}/edit")
     public String editOrder(@PathVariable Long id) {
         return "orders/edit-order";     // → templates/orders/edit-order.html

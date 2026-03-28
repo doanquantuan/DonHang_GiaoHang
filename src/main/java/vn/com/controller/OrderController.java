@@ -116,6 +116,31 @@ public class OrderController {
         }
         map.put("orderDetails", details);
 
+        // Nhúng thông tin delivery — đây là nguồn chứa shipperName đúng
+        Delivery delivery = o.getDelivery();
+        if (delivery != null) {
+            Map<String, Object> dm = new LinkedHashMap<>();
+            dm.put("id",           delivery.getId());
+            dm.put("shipperName",  delivery.getShipperName());   // ← frontend đọc từ đây
+            dm.put("shipperPhone", delivery.getShipperPhone());
+            dm.put("vehicleInfo",  delivery.getVehicleInfo());
+            dm.put("expectedTime", delivery.getExpectedTime());
+            dm.put("status",       delivery.getStatus() != null ? delivery.getStatus().name() : "WAITING");
+            dm.put("note",         delivery.getNote());          // = deliveryNote
+            dm.put("deliveryDate", delivery.getDeliveryDate());
+            map.put("delivery", dm);
+
+            // Alias ở top-level để tương thích frontend cũ dùng data.deliveryNote / data.expectedTime
+            map.put("deliveryNote",  delivery.getNote());
+            map.put("expectedTime",  delivery.getExpectedTime());
+            map.put("shipperName",   delivery.getShipperName());
+        } else {
+            map.put("delivery",     null);
+            map.put("deliveryNote", null);
+            map.put("expectedTime", null);
+            map.put("shipperName",  null);
+        }
+
         return map;
     }
 

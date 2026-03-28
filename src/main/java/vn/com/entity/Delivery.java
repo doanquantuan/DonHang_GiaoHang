@@ -8,7 +8,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GeneratedValue; 
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -46,10 +46,10 @@ public class Delivery {
     @Column(name = "shipper_phone", length = 20)
     private String shipperPhone;
 
-    @Column(name = "vehicle_info", columnDefinition = "NVARCHAR(100)")
+    @Column(name = "vehicle_info", length = 100)
     private String vehicleInfo;
 
-    @Column(name = "expected_time", columnDefinition = "NVARCHAR(100)")
+    @Column(name = "expected_time", length = 100)
     private String expectedTime;
 
     @Enumerated(EnumType.STRING)
@@ -58,7 +58,6 @@ public class Delivery {
     @Column(name = "delivery_date")
     private LocalDateTime deliveryDate;
 
-    @Column(name = "note", columnDefinition = "NVARCHAR(MAX)")
     private String note;
 
     @Column(name = "updated_at")

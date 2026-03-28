@@ -2,12 +2,13 @@ package vn.com.repository;
 
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import vn.com.entity.Delivery;
+import vn.com.enums.DeliveryStatus;
 
-@Repository
-public interface DeliveryRepository extends JpaRepository<Delivery, Long>{
-    boolean existsByOrder_Id(Long orderId);
-    Optional<Delivery> findByOrder_Id(Long orderId);
+import java.util.List;
+import java.util.Optional;
+
+public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
+    List<Delivery> findByStatus(DeliveryStatus status);
+    Optional<Delivery> findByOrderId(Long orderId);
 }

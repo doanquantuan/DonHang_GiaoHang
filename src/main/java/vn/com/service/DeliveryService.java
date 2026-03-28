@@ -23,7 +23,17 @@ public class DeliveryService {
     @Autowired
     private OrderRepository orderRepository;
 
-  
+    @Transactional(readOnly = true)
+    public List<Delivery> getAllDeliveries() {
+        List<Delivery> list = deliveryRepository.findAll();
+        // Trigger lazy load của order trong cùng transaction
+        list.forEach(d -> {
+            if (d.getOrder() != null) {
+                d.getOrder().getId(); // force load
+            }
+        });
+        return list;
+    }
 
     @Transactional(readOnly = true)
     public Delivery getDeliveryById(Long id) {

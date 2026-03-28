@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Tạo chuyến giao</title>
+</head>
+<body>
+
+<!-- Topbar standalone (chỉ hiển thị khi mở file trực tiếp; Thymeleaf layout sẽ thay thế phần này) -->
+<nav class="topbar" th:remove="all">
+  <a class="topbar-brand" href="/">
+    <i class="bi bi-truck" style="font-size:18px"></i> DeliveryMgr
+  </a>
+  <div class="topbar-nav">
+    <a href="/orders">Đơn hàng</a>
+    <a href="/deliveries" class="active">Giao hàng</a>
+    <a href="/users">Người dùng</a>
+  </div>
+</nav>
+
+<div th:replace="~{fragments/layout :: main('Tạo chuyến giao - DeliveryMgr', ~{::div.content})}">
+
+  <div class="content">
+
+    <!-- Page header -->
+    <div class="page-hd">
+      <div>
+        <div class="page-eyebrow">GIAO HÀNG</div>
+        <h1 class="page-title">Tạo chuyến giao mới</h1>
+        <div class="page-sub">Chọn đơn hàng và phân công tài xế để tạo chuyến giao.</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-default" onclick="window.location.href='/deliveries'">
+          ← Quay lại
+        </button>
+      </div>
+    </div>
+
+    <!-- Form layout: 2 cột -->
+    <div class="dc-layout">
+
+      <!-- ══ CỘT TRÁI ══ -->
+      <div>
+
+        <!-- Chọn đơn hàng -->
+        <div class="dc-panel">
+          <div class="dc-panel-hd">
+            <span>📦</span> Chọn đơn hàng
+          </div>
+          <div class="dc-panel-body">
+
+            <!-- Search box -->
+            <div class="dc-search-wrap">
+              <span class="dc-search-ico">🔍</span>
+              <input type="text" id="orderSearch"
+                     class="dc-search-input"
+                     placeholder="Tìm theo mã đơn, tên khách hàng..."
+                     oninput="filterOrders()"/>
+            </div>
+
+            <!-- Loading state -->
+            <div id="orderLoading" class="dc-state">
+              <div class="dc-dots"><span></span><span></span><span></span></div>
+              <span>Đang tải danh sách đơn hàng chưa phân công...</span>
+            </div>
+
+            <!-- Error state -->
+            <div id="orderError" class="dc-state dc-error" style="display:none">
+              ❌ Không tải được dữ liệu. Kiểm tra backend đang chạy.
+            </div>
+
+            <!-- Order list -->
+            <div id="orderList" style="display:none">
+              <div class="dc-order-list" id="orderItems"></div>
+              <div id="orderEmpty" class="dc-state" style="display:none">
+                📭 Không có đơn hàng nào chưa phân công
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Preview đơn đã chọn -->
+        <div class="dc-panel" id="selectedPreview" style="display:none">
+          <div class="dc-panel-hd"><span>✅</span> Đơn hàng đã chọn</div>
+          <div class="dc-panel-body">
+            <div class="dc-preview" id="previewContent"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ CỘT PHẢI ══ -->
+      <div>
+
+        <!-- Thông tin giao hàng -->
+        <div class="dc-panel">
+          <div class="dc-panel-hd"><span>🚚</span> Thông tin giao hàng</div>
+          <div class="dc-panel-body">
+            <div class="dc-fg">
+              <label>Tài xế <span class="dc-req">*</span></label>
+              <select id="shipperSelect" onchange="onShipperChange()">
+                <option value="">-- Đang tải danh sách tài xế... --</option>
+              </select>
+              <div class="dc-note" style="margin-top:2px">Danh sách tài xế có trong hệ thống</div>
+            </div>
+            <!-- Thông tin tài xế tự điền sau khi chọn -->
+            <div id="shipperDetail" style="display:none">
+              <div class="dc-shipper-card">
+                <div class="dc-shipper-avatar" id="shipperAvatar">TX</div>
+                <div>
+                  <div class="dc-shipper-name" id="shipperNameDisplay">—</div>
+                  <div class="dc-shipper-meta">SĐT: <span id="shipperPhoneDisplay">—</span></div>
+                  <div class="dc-shipper-meta">Xe: <span id="vehicleDisplay">—</span></div>
+                </div>
+              </div>
+            </div>
+            <!-- Hidden fields để submit -->
+            <input type="hidden" id="shipperName"/>
+            <input type="hidden" id="shipperPhone"/>
+            <input type="hidden" id="vehicleInfo"/>
+            <div class="dc-fg">
+              <label>Ngày giao</label>
+              <input type="date" id="deliveryDate"/>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div class="dc-fg" style="flex:1">
+                <label>Từ giờ</label>
+                <input type="time" id="timeFrom" value="08:00"/>
+              </div>
+              <span style="color:var(--text-2);font-weight:700;padding-top:18px">–</span>
+              <div class="dc-fg" style="flex:1">
+                <label>Đến giờ</label>
+                <input type="time" id="timeTo" value="12:00"/>
+              </div>
+            </div>
+            <div class="dc-fg">
+              <label>Ghi chú</label>
+              <textarea id="deliveryNote" placeholder="Ghi chú cho tài xế..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trạng thái ban đầu -->
+        <div class="dc-panel">
+          <div class="dc-panel-hd"><span>🏷</span> Trạng thái ban đầu</div>
+          <div class="dc-panel-body">
+            <select id="initStatus">
+              <option value="PROCESSING">Chờ lấy hàng</option>
+              <option value="SHIPPING">Đang giao ngay</option>
+            </select>
+            <div class="dc-note">Trạng thái sẽ được cập nhật vào đơn hàng tương ứng.</div>
+          </div>
+        </div>
+
+        <!-- Action -->
+        <div class="dc-panel">
+          <div class="dc-panel-body" style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-primary dc-btn-submit" id="submitBtn" onclick="submitDelivery()">
+              <span id="submitSpinner" style="display:none">⏳</span>
+              <span id="submitLabel">🚀 Tạo chuyến giao</span>
+            </button>
+            <button class="btn btn-default" onclick="window.location.href='/deliveries'">
+              Huỷ bỏ
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── STYLES ── -->
+<style>
+.page-title{font-size:28px;font-weight:800;color:var(--text-1);line-height:1.2;margin-bottom:4px}
+.topbar{background:#212529;color:#fff;display:flex;align-items:center;height:48px;position:sticky;top:0;z-index:200;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.topbar-brand{display:flex;align-items:center;gap:8px;padding:0 20px;height:100%;font-weight:800;font-size:15px;border-right:1px solid rgba(255,255,255,.12);white-space:nowrap;text-decoration:none;color:#fff}
+.topbar-nav{display:flex;height:100%}
+.topbar-nav a{display:flex;align-items:center;padding:0 18px;color:rgba(255,255,255,.65);font-size:13.5px;font-weight:600;text-decoration:none;height:100%;transition:all .15s;border-bottom:2px solid transparent}
+.topbar-nav a:hover{color:#fff;background:rgba(255,255,255,.06)}
+.topbar-nav a.active{color:#fff;border-bottom-color:#1a56db}
+
+/* Layout 2 cột */
+.dc-layout{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+
+/* Panel */
+.dc-panel{background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:16px}
+.dc-panel:last-child{margin-bottom:0}
+.dc-panel-hd{padding:10px 16px;border-bottom:1.5px dashed var(--border);font-size:11.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-2);display:flex;align-items:center;gap:7px}
+.dc-panel-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+
+/* Search */
+.dc-search-wrap{position:relative;margin-bottom:4px}
+.dc-search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px}
+.dc-search-input{width:100%;border:1px solid var(--border);border-radius:var(--r);padding:8px 10px 8px 34px;font-family:inherit;font-size:13.5px;color:var(--text-1);outline:none;transition:border-color .15s}
+.dc-search-input:focus{border-color:#1a56db;box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+
+/* State messages */
+.dc-state{text-align:center;padding:28px;color:var(--text-2);font-size:13px;display:flex;align-items:center;justify-content:center;gap:10px}
+.dc-error{color:#dc3545}
+.dc-dots{display:inline-flex;gap:4px}
+.dc-dots span{width:6px;height:6px;border-radius:50%;background:var(--text-3);animation:dcDot 1s ease-in-out infinite}
+.dc-dots span:nth-child(2){animation-delay:.15s}
+.dc-dots span:nth-child(3){animation-delay:.3s}
+@keyframes dcDot{0%,80%,100%{transform:scale(.8);opacity:.4}40%{transform:scale(1.2);opacity:1}}
+
+/* Order list */
+.dc-order-list{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto;padding-right:2px}
+.dc-order-item{border:1.5px solid var(--border);border-radius:var(--r);padding:10px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
+.dc-order-item:hover{border-color:#1a56db;background:#f0f5ff}
+.dc-order-item.selected{border-color:#1a56db;background:#e8f0fe}
+.dc-order-item .oi-id{font-size:12px;font-weight:800;color:#1a56db;min-width:60px}
+.dc-order-item .oi-body{flex:1}
+.dc-order-item .oi-name{font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:2px}
+.dc-order-item .oi-meta{font-size:12px;color:var(--text-2)}
+.dc-order-item .oi-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+.st-NEW       {background:#e8f0fe;color:#1a56db}
+.st-PROCESSING{background:#fff3cd;color:#856404}
+.st-SHIPPING  {background:#cff4fc;color:#0a7899}
+.st-DONE      {background:#d1e7dd;color:#0a5c36}
+.st-CANCEL    {background:#f8d7da;color:#842029}
+
+/* Preview panel */
+.dc-preview{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.dc-preview-item{display:flex;flex-direction:column;gap:2px}
+.dc-preview-item.full{grid-column:1/-1}
+.dc-pi-label{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px}
+.dc-pi-val{font-size:13px;font-weight:600;color:var(--text-1)}
+
+/* Form fields */
+.dc-fg{display:flex;flex-direction:column;gap:4px}
+.dc-fg label{font-size:12.5px;font-weight:700;color:var(--text-1)}
+.dc-req{color:#dc3545;margin-left:2px}
+.dc-fg input,.dc-fg select,.dc-fg textarea{
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:8px 10px;font-family:inherit;font-size:13.5px;
+  color:var(--text-1);outline:none;transition:border-color .15s;
+  background:#fff;width:100%
+}
+.dc-fg input:focus,.dc-fg select:focus,.dc-fg textarea:focus{border-color:#1a56db;box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+.dc-fg input.invalid{border-color:#dc3545!important}
+.dc-fg textarea{resize:vertical;min-height:72px}
+.dc-note{font-size:11.5px;color:var(--text-2);margin-top:2px}
+
+/* Submit button */
+.dc-btn-submit{width:100%;justify-content:center;padding:11px;font-size:14px}
+
+@media(max-width:860px){.dc-layout{grid-template-columns:1fr}}
+
+/* Shipper card in create-delivery */
+.dc-shipper-card{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px}
+.dc-shipper-avatar{width:38px;height:38px;border-radius:50%;background:#1a56db;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0}
+.dc-shipper-name{font-size:13.5px;font-weight:700;color:#212529;margin-bottom:2px}
+.dc-shipper-meta{font-size:12px;color:#6c757d}
+</style>
+
+<script>
+/* ── CONFIG ── */
+const API_BASE = '';  // đổi thành 'http://localhost:8080' khi test file trực tiếp
+
+/* ── STATE ── */
+let allOrders      = [];
+let filteredOrders = [];
+let selectedOrder  = null;
+
+const STATUS_LABEL = {
+  NEW:'Chờ xử lý', PROCESSING:'Đang xử lý',
+  SHIPPING:'Đang giao', DONE:'Hoàn thành', CANCEL:'Đã huỷ'
+};
+
+/* ── LOAD ORDERS (chỉ lấy đơn chưa hoàn thành/huỷ) ── */
+async function loadOrders() {
+  try {
+    const res  = await fetch(API_BASE + '/api/orders');
+    const data = await res.json();
+    allOrders = Array.isArray(data)
+      ? data.filter(o => o.status === 'NEW' && !o.shipperName)
+      : [];
+
+    document.getElementById('orderLoading').style.display = 'none';
+    document.getElementById('orderList').style.display    = 'block';
+
+    filteredOrders = [...allOrders];
+    renderOrders();
+  } catch {
+    document.getElementById('orderLoading').style.display = 'none';
+    document.getElementById('orderError').style.display   = 'flex';
+  }
+}
+
+/* ── RENDER ORDER LIST ── */
+function renderOrders() {
+  const container = document.getElementById('orderItems');
+  const empty     = document.getElementById('orderEmpty');
+
+  if (filteredOrders.length === 0) {
+    container.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  container.innerHTML = filteredOrders.map(o => `
+    <div class="dc-order-item ${selectedOrder?.id === o.id ? 'selected' : ''}"
+         onclick="selectOrder(${o.id})">
+      <span class="oi-id">DH-${o.id}</span>
+      <div class="oi-body">
+        <div class="oi-name">${esc(o.customerName || '—')}</div>
+        <div class="oi-meta">${esc(o.phone || '')} · ${esc(truncate(o.address || '', 30))}</div>
+      </div>
+      <span class="oi-status st-${o.status}">${STATUS_LABEL[o.status] || o.status}</span>
+    </div>`).join('');
+}
+
+/* ── FILTER ── */
+function filterOrders() {
+  const q = document.getElementById('orderSearch').value.trim().toLowerCase();
+  filteredOrders = q
+    ? allOrders.filter(o =>
+        ('dh-' + o.id).includes(q) ||
+        (o.customerName || '').toLowerCase().includes(q) ||
+        (o.phone || '').includes(q))
+    : [...allOrders];
+  renderOrders();
+}
+
+/* ── SELECT ORDER ── */
+function selectOrder(id) {
+  selectedOrder = allOrders.find(o => o.id === id) || null;
+  renderOrders(); // cập nhật highlight
+
+  const preview = document.getElementById('selectedPreview');
+  const content = document.getElementById('previewContent');
+  if (!selectedOrder) { preview.style.display = 'none'; return; }
+
+  preview.style.display = 'block';
+  content.innerHTML = `
+    <div class="dc-preview-item">
+      <span class="dc-pi-label">Mã đơn</span>
+      <span class="dc-pi-val">DH-${selectedOrder.id}</span>
+    </div>
+    <div class="dc-preview-item">
+      <span class="dc-pi-label">Trạng thái</span>
+      <span class="dc-pi-val">${STATUS_LABEL[selectedOrder.status] || selectedOrder.status}</span>
+    </div>
+    <div class="dc-preview-item">
+      <span class="dc-pi-label">Khách hàng</span>
+      <span class="dc-pi-val">${esc(selectedOrder.customerName || '—')}</span>
+    </div>
+    <div class="dc-preview-item">
+      <span class="dc-pi-label">Số điện thoại</span>
+      <span class="dc-pi-val">${esc(selectedOrder.phone || '—')}</span>
+    </div>
+    <div class="dc-preview-item full">
+      <span class="dc-pi-label">Địa chỉ giao</span>
+      <span class="dc-pi-val">${esc(selectedOrder.address || '—')}</span>
+    </div>
+    <div class="dc-preview-item">
+      <span class="dc-pi-label">Tổng tiền</span>
+      <span class="dc-pi-val">${fmt(selectedOrder.totalAmount)}</span>
+    </div>
+    <div class="dc-preview-item">
+      <span class="dc-pi-label">Thanh toán</span>
+      <span class="dc-pi-val">${esc(selectedOrder.paymentMethod || '—')}</span>
+    </div>`;
+
+  // Tự điền địa chỉ và ghi chú nếu đơn có sẵn
+  if (selectedOrder.deliveryNote && !document.getElementById('deliveryNote').value) {
+    document.getElementById('deliveryNote').value = selectedOrder.deliveryNote;
+  }
+  if (selectedOrder.expectedTime) {
+    parseExpectedTime(selectedOrder.expectedTime);
+  }
+  if (selectedOrder.shipperName) {
+    // Tự chọn tài xế trong combobox nếu đơn đã có
+    const sel = document.getElementById('shipperSelect');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === selectedOrder.shipperName) {
+        sel.selectedIndex = i;
+        onShipperChange();
+        break;
+      }
+    }
+  }
+}
+
+/* ── PARSE expectedTime → date + timeFrom + timeTo ── */
+function parseExpectedTime(s) {
+  if (!s) return;
+  const parts = s.split(' ');
+  if (parts.length >= 3 && parts[0].includes('-')) {
+    document.getElementById('deliveryDate').value = parts[0];
+    document.getElementById('timeFrom').value     = parts[1];
+    document.getElementById('timeTo').value       = (parts[3] || '12:00');
+  } else {
+    const times = s.split('–').map(x => x.trim());
+    document.getElementById('timeFrom').value = times[0] || '08:00';
+    document.getElementById('timeTo').value   = times[1] || '12:00';
+  }
+}
+
+/* ── VALIDATE ── */
+function validate() {
+  let ok = true;
+  if (!selectedOrder) {
+    showToast('Vui lòng chọn đơn hàng!', 'error');
+    return false;
+  }
+  const sel    = document.getElementById('shipperSelect');
+  const hidden = document.getElementById('shipperName');
+  if (!hidden.value.trim()) {
+    sel.classList.add('invalid');
+    sel.style.borderColor = '#dc3545';
+    showToast('Vui lòng chọn tài xế giao hàng!', 'error');
+    ok = false;
+  } else {
+    sel.classList.remove('invalid');
+    sel.style.borderColor = '';
+  }
+  return ok;
+}
+
+/* ── SUBMIT ── gọi PUT /api/orders/{id} để cập nhật thông tin giao hàng ── */
+async function submitDelivery() {
+  if (!validate()) return;
+
+  const tf = document.getElementById('timeFrom').value;
+  const tt = document.getElementById('timeTo').value;
+  const dd = document.getElementById('deliveryDate').value;
+
+  const payload = {
+    ...selectedOrder,
+    shipperName  : document.getElementById('shipperName').value.trim(),
+    deliveryNote : document.getElementById('deliveryNote').value.trim(),
+    expectedTime : dd ? `${dd} ${tf} – ${tt}` : `${tf} – ${tt}`,
+    status       : document.getElementById('initStatus').value,
+  };
+
+  setLoading(true);
+  try {
+    const res  = await fetch(API_BASE + '/api/orders/' + selectedOrder.id, {
+      method : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showToast('✅ Tạo chuyến giao thành công!', 'success');
+      setTimeout(() => window.location.href = '/deliveries', 1600);
+    } else {
+      showToast('❌ ' + (data.message || 'Tạo thất bại!'), 'error');
+    }
+  } catch {
+    showToast('❌ Không kết nối được server!', 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+/* ── HELPERS ── */
+function setLoading(on) {
+  document.getElementById('submitBtn').disabled       = on;
+  document.getElementById('submitSpinner').style.display = on ? 'inline' : 'none';
+  document.getElementById('submitLabel').textContent  = on ? 'Đang xử lý...' : '🚀 Tạo chuyến giao';
+}
+function fmt(n)      { return n != null ? new Intl.NumberFormat('vi-VN').format(n) + 'đ' : '—'; }
+function esc(s)      { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function truncate(s,n){ return s.length > n ? s.slice(0,n)+'…' : s; }
+
+/* ── XOÁ INVALID KHI CHỌN ── */
+document.getElementById('shipperSelect')
+  ?.addEventListener('change', function(){
+    this.classList.remove('invalid');
+    this.style.borderColor = '';
+  });
+
+
+/* ── LOAD SHIPPERS COMBOBOX ── */
+async function loadShippers() {
+  const sel = document.getElementById('shipperSelect');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">-- Đang tải... --</option>`;
+  try {
+    const res  = await fetch(API_BASE + '/api/deliveries/shippers');
+    const list = await res.json();
+    if (!Array.isArray(list) || list.length === 0) {
+      sel.innerHTML = `<option value="">-- Chưa có tài xế nào (role SHIPPER) --</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">-- Chọn tài xế --</option>` +
+      list.map(s =>
+        `<option value="${s.fullName||''}"` +
+        ` data-phone="${s.phone||''}"` +
+        ` data-vehicle="${s.vehicleInfo||''}">` +
+        `${s.fullName||''} (${s.username||''})</option>`
+      ).join('');
+  } catch(e) {
+    sel.innerHTML = `<option value="">-- Lỗi tải danh sách tài xế --</option>`;
+    console.error('loadShippers:', e);
+  }
+}
+
+/* ── KHI CHỌN TÀI XẾ ── */
+function onShipperChange() {
+  const sel  = document.getElementById('shipperSelect');
+  const opt  = sel.options[sel.selectedIndex];
+  const name = opt?.value?.trim() || '';
+
+  document.getElementById('shipperName').value  = name;
+  document.getElementById('shipperPhone').value = opt?.dataset?.phone   || '';
+  document.getElementById('vehicleInfo').value  = opt?.dataset?.vehicle || '';
+
+  const detail = document.getElementById('shipperDetail');
+  if (name) {
+    const initials = name.split(' ').slice(-2).map(w => w[0]?.toUpperCase() || '').join('');
+    document.getElementById('shipperAvatar').textContent      = initials || 'TX';
+    document.getElementById('shipperNameDisplay').textContent = name;
+    document.getElementById('shipperPhoneDisplay').textContent= opt?.dataset?.phone   || '—';
+    document.getElementById('vehicleDisplay').textContent     = opt?.dataset?.vehicle || '—';
+    detail.style.display = 'block';
+  } else {
+    detail.style.display = 'none';
+  }
+  // Xóa invalid nếu có
+  sel.classList.remove('invalid');
+}
+
+/* ── INIT ── */
+loadOrders();
+loadShippers();
+</script>
+
+</body>
+</html>

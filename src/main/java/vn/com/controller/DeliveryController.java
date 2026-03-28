@@ -25,7 +25,15 @@ public class DeliveryController {
     @Autowired
     private UserRepository userRepository;
 
-   
+    // Lấy tất cả delivery — trả về Map để tránh @JsonIgnore và LazyLoading
+    @GetMapping
+    public ResponseEntity<?> getAllDeliveries() {
+        List<Delivery> list = deliveryService.getAllDeliveries();
+        List<Map<String, Object>> result = list.stream()
+                .map(this::toMap)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
 
     // Tạo chuyến giao mới
     @PostMapping

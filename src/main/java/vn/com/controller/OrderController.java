@@ -64,6 +64,9 @@ public class OrderController {
         try {
             Order updatedOrder = orderService.updateOrder(id, orderDto);
             return ResponseEntity.ok(toMap(updatedOrder));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(msg(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(msg("Cập nhật thất bại! Không tìm thấy đơn hàng ID: " + id));

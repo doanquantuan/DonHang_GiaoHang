@@ -31,7 +31,7 @@ public class OrderService {
         order.setEmail(dto.getEmail());
         order.setAddress(dto.getAddress());
         order.setPaymentMethod(dto.getPaymentMethod());
-        order.setPaymentStatus(dto.getPaymentStatus());
+        order.setPaymentStatus(resolvePaymentStatus(dto.getPaymentMethod(), OrderStatus.NEW, dto.getPaymentStatus()));
         
         order.setShippingFee(dto.getShippingFee() != null ? dto.getShippingFee() : 0.0);
         order.setDiscount(dto.getDiscount() != null ? dto.getDiscount() : 0.0);
@@ -96,13 +96,15 @@ public class OrderService {
     public Order updateOrder(Long id, OrderDto dto) {
         validateNonNegativeAmounts(dto);
         Order order = getOrderById(id);
+        OrderStatus nextStatus = parseOrderStatus(dto.getStatus(), order.getStatus());
         
         order.setCustomerName(dto.getCustomerName());
         order.setPhone(dto.getPhone());
         order.setEmail(dto.getEmail());
         order.setAddress(dto.getAddress());
+        order.setStatus(nextStatus);
         order.setPaymentMethod(dto.getPaymentMethod());
-        order.setPaymentStatus(dto.getPaymentStatus());
+        order.setPaymentStatus(resolvePaymentStatus(dto.getPaymentMethod(), nextStatus, dto.getPaymentStatus()));
         order.setShippingFee(dto.getShippingFee() != null ? dto.getShippingFee() : 0.0);
         order.setDiscount(dto.getDiscount() != null ? dto.getDiscount() : 0.0);
 
@@ -149,6 +151,30 @@ public class OrderService {
                 throw new IllegalArgumentException("Đơn giá sản phẩm không được âm");
             }
         }
+    }
+
+    private OrderStatus parseOrderStatus(String rawStatus, OrderStatus fallback) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return fallback;
+        }
+        try {
+            return OrderStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
+    }
+
+    private String resolvePaymentStatus(String paymentMethod, OrderStatus orderStatus, String requestedPaymentStatus) {
+        if (orderStatus == OrderStatus.COMPLETED) {
+            return "Đã thanh toán";
+        }
+        if ("COD".equalsIgnoreCase(paymentMethod)) {
+            return "Chưa thu";
+        }
+        if (requestedPaymentStatus == null || requestedPaymentStatus.isBlank()) {
+            return "Chưa thu";
+        }
+        return requestedPaymentStatus;
     }
 
     @Transactional

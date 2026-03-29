@@ -146,22 +146,14 @@
       <div class="panel">
         <div class="panel-header">Trạng thái đơn</div>
         <div class="panel-body">
-          <select id="status" onchange="markChanged('status','Trạng thái đơn'); updateStatusBadge()">
+          <select id="status" onchange="markChanged('status','Trạng thái đơn'); updateStatusBadge(); syncPaidCheckboxState()">
+            <option value="NEW">Mới tạo</option>
             <option value="CONFIRMED">Đã xác nhận</option>
             <option value="COMPLETED">Hoàn thành</option>
             <option value="CANCELLED">Đã huỷ</option>
           </select>
-          <!-- Hiển thị khi đơn đang là NEW — không cho chọn trạng thái mới tạo -->
-          <div id="statusNewReadonly" style="display:none">
-            <span class="status-badge badge-NEW" style="font-size:13px;padding:5px 12px">Mới tạo</span>
-            <div class="note-text" style="margin-top:6px;color:var(--gray-600)">
-              Chọn trạng thái mới để cập nhật đơn hàng:
-            </div>
-            <button type="button" class="btn-change-status" onclick="unlockStatusSelect()">
-              <i class="bi bi-arrow-right-circle"></i> Chuyển trạng thái
-            </button>
-          </div>
-          <div class="status-sync-note" id="statusSyncNote" style="display:none">
+
+          <div class="status-sync-note" id="statusSyncNote" style="display:none; margin-top:10px">
             <i class="bi bi-arrow-left-right"></i>
             <span id="statusSyncText"></span>
           </div>
@@ -493,19 +485,9 @@ function fillForm(data) {
   setValue('email',        data.email);
   setValue('address',      data.address);
   setValue('deliveryNote', data.delivery?.note || data.deliveryNote || '');
-  // Nếu đơn đang là NEW: ẩn select (không cho giữ NEW), hiện readonly block
-  const statusSel      = document.getElementById('status');
-  const statusReadonly = document.getElementById('statusNewReadonly');
-  if (data.status === 'NEW') {
-    statusSel.style.display      = 'none';
-    statusReadonly.style.display = 'block';
-    // Mặc định select về CONFIRMED sẵn để khi user bỏ lock là có giá trị hợp lệ
-    statusSel.value = 'CONFIRMED';
-  } else {
-    statusSel.style.display      = '';
-    statusReadonly.style.display = 'none';
-    setValue('status', data.status);
-  }
+// Luôn hiển thị select box, cho phép chọn tất cả trạng thái
+  setValue('status', data.status || 'NEW');
+  applyStatusBadge(data.status);
   applyStatusBadge(data.status);
   setValue('paymentMethod',data.paymentMethod);
   // Load danh sách shipper rồi set selected = tài xế hiện tại
@@ -519,6 +501,7 @@ function fillForm(data) {
               || data.paymentStatus === 'PAID'
               || data.status === 'COMPLETED';
   document.getElementById('paid').checked = isPaid;
+  syncPaidCheckboxState();
 
   // Parse expectedTime → date + timeFrom + timeTo
   // Format lưu: "2026-03-21 08:00 – 12:00" hoặc "08:00 – 12:00"
@@ -562,6 +545,31 @@ function setValue(id, val) {
 }
 
 /* ─── PRODUCT ROWS ─── */
+function syncPaidCheckboxState() {
+  const paidCheckbox = document.getElementById('paid');
+  if (!paidCheckbox) return;
+
+  const paymentMethod = document.getElementById('paymentMethod')?.value;
+  const orderStatus = document.getElementById('status')?.value || originalData?.status || 'NEW';
+
+  if (orderStatus === 'COMPLETED') {
+    paidCheckbox.checked = true;
+    paidCheckbox.disabled = true;
+    paidCheckbox.title = 'Don hoan thanh luon duoc danh dau da thanh toan.';
+    return;
+  }
+
+  if (paymentMethod === 'COD') {
+    paidCheckbox.checked = false;
+    paidCheckbox.disabled = true;
+    paidCheckbox.title = 'Don COD se chuyen sang da thanh toan khi giao thanh cong.';
+    return;
+  }
+
+  paidCheckbox.disabled = false;
+  paidCheckbox.title = '';
+}
+
 function addRow(name='', qty=1, price=0) {
   rid++;
   const id = rid;
@@ -670,21 +678,7 @@ function applyStatusBadge(st) {
 /* Gọi từ onchange của select#status */
 function updateStatusBadge() {
   applyStatusBadge(document.getElementById('status').value);
-}
-
-/* Mở khóa select trạng thái khi đơn đang là NEW */
-function unlockStatusSelect() {
-  const sel      = document.getElementById('status');
-  const readonly = document.getElementById('statusNewReadonly');
-  sel.style.display      = '';
-  readonly.style.display = 'none';
-  // Reset border phòng trường hợp đã highlight đỏ
-  readonly.style.border  = '';
-  readonly.style.padding = '';
-  sel.focus();
-  // Đánh dấu có thay đổi
-  markChanged('status', 'Trạng thái đơn');
-  updateStatusBadge();
+  syncPaidCheckboxState();
 }
 
 /* ─── VALIDATE ─── */
@@ -907,6 +901,7 @@ function esc(s) { return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;
 );
 
 /* ─── INIT ─── */
+document.getElementById('paymentMethod')?.addEventListener('change', syncPaidCheckboxState);
 loadOrder();
 </script>
 

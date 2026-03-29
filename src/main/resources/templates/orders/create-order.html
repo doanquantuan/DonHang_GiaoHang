@@ -124,7 +124,7 @@
       <div class="panel">
         <div class="panel-header">Thanh toán</div>
         <div class="panel-body">
-          <select id="paymentMethod" style="margin-bottom:10px">
+          <select id="paymentMethod" style="margin-bottom:10px" onchange="syncPaidCheckboxByPaymentMethod()">
             <option value="">Hình thức ▾</option>
             <option value="COD">Tiền mặt (COD)</option>
             <option value="Chuyển khoản">Chuyển khoản</option>
@@ -400,6 +400,22 @@ function sanitizeMinValue(input, min = 0) {
 }
 
 /* ─── VALIDATE ─── */
+function syncPaidCheckboxByPaymentMethod() {
+  const paymentMethod = document.getElementById('paymentMethod')?.value;
+  const paidCheckbox = document.getElementById('paid');
+  if (!paidCheckbox) return;
+
+  if (paymentMethod === 'COD') {
+    paidCheckbox.checked = false;
+    paidCheckbox.disabled = true;
+    paidCheckbox.title = 'Đơn COD sẽ chuyển sang đã thanh toán khi giao thành công.';
+    return;
+  }
+
+  paidCheckbox.disabled = false;
+  paidCheckbox.title = '';
+}
+
 function validate() {
   let ok = true;
 
@@ -601,6 +617,7 @@ async function loadShippers(selectedName = '') {
 // Khởi động 1 dòng sản phẩm
 addRow();
 loadShippers();
+syncPaidCheckboxByPaymentMethod();
 </script>
 
 </body>

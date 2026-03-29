@@ -23,6 +23,7 @@ public class OrderService {
 
     @Transactional
     public Order createNewOrder(OrderDto dto) {
+        validateNonNegativeAmounts(dto);
         
         Order order = new Order();
         order.setCustomerName(dto.getCustomerName());
@@ -93,6 +94,7 @@ public class OrderService {
 
     @Transactional
     public Order updateOrder(Long id, OrderDto dto) {
+        validateNonNegativeAmounts(dto);
         Order order = getOrderById(id);
         
         order.setCustomerName(dto.getCustomerName());
@@ -128,6 +130,27 @@ public class OrderService {
 
         return orderRepository.save(order);
     }
+
+    private void validateNonNegativeAmounts(OrderDto dto) {
+        if (dto.getShippingFee() != null && dto.getShippingFee() < 0) {
+            throw new IllegalArgumentException("Phí giao hàng không được âm");
+        }
+
+        if (dto.getDiscount() != null && dto.getDiscount() < 0) {
+            throw new IllegalArgumentException("Giảm giá không được âm");
+        }
+
+        if (dto.getOrderDetails() == null) {
+            return;
+        }
+
+        for (OrderDto.OrderDetailDto detailDto : dto.getOrderDetails()) {
+            if (detailDto.getPrice() != null && detailDto.getPrice() < 0) {
+                throw new IllegalArgumentException("Đơn giá sản phẩm không được âm");
+            }
+        }
+    }
+
     @Transactional
     public void deleteOrder(Long id) {
         Order order = getOrderById(id);

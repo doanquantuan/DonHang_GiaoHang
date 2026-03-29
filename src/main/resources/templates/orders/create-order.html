@@ -361,6 +361,8 @@ function calcRow(id) {
   const row = document.getElementById('row-' + id);
   if (!row) return;
   const ns = row.querySelectorAll('input[type=number]');
+  sanitizeMinValue(ns[0], 1);
+  sanitizeMinValue(ns[1], 0);
   const v  = (parseFloat(ns[0]?.value)||0) * (parseFloat(ns[1]?.value)||0);
   document.getElementById('rt-' + id).textContent = fmt(v);
   calcSummary();
@@ -370,24 +372,106 @@ function calcSummary() {
   let sub = 0;
   document.querySelectorAll('#ptbody tr').forEach(r => {
     const ns = r.querySelectorAll('input[type=number]');
-    if (ns.length >= 2) sub += (parseFloat(ns[0].value)||0) * (parseFloat(ns[1].value)||0);
+    if (ns.length >= 2) {
+      sanitizeMinValue(ns[0], 1);
+      sanitizeMinValue(ns[1], 0);
+      sub += (parseFloat(ns[0].value)||0) * (parseFloat(ns[1].value)||0);
+    }
   });
-  const ship = parseFloat(document.getElementById('shippingFee').value)||0;
+  const shippingFeeEl = document.getElementById('shippingFee');
+  sanitizeMinValue(shippingFeeEl, 0);
+  const ship = parseFloat(shippingFeeEl.value)||0;
   document.getElementById('subtotal').textContent   = fmt(sub);
   document.getElementById('grandtotal').textContent = fmt(sub + ship);
 }
 
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n) + 'đ'; }
 
+function sanitizeMinValue(input, min = 0) {
+  if (!input) return min;
+  const raw = input.value?.trim();
+  if (raw === '') return min;
+  const value = parseFloat(raw);
+  if (!Number.isFinite(value) || value < min) {
+    input.value = String(min);
+    return min;
+  }
+  return value;
+}
+
 /* ─── VALIDATE ─── */
 function validate() {
   let ok = true;
-  ['customerName','phone','address'].forEach(id => {
+
+  // 1. Các trường bắt buộc của khách hàng
+  ['customerName', 'phone', 'address'].forEach(id => {
     const el = document.getElementById(id);
-    if (!el.value.trim()) { el.classList.add('invalid'); ok = false; }
-    else el.classList.remove('invalid');
+    if (!el.value.trim()) {
+      el.classList.add('invalid');
+      ok = false;
+    } else {
+      el.classList.remove('invalid');
+    }
   });
-  if (!ok) showToast('Vui lòng điền đầy đủ các trường bắt buộc (*)', 'err');
+
+  // 2. Kiểm tra sản phẩm (KHÔNG cho phép dòng trống)
+  const rows = document.querySelectorAll('#ptbody tr');
+  let hasProductError = false;
+  let hasEmptyProduct = false;
+
+  rows.forEach(r => {
+    const nameInput = r.querySelector('.cn input[type="text"]');
+    const qtyInput  = r.querySelector('.cq input[type="number"]');
+    const priceInput = r.querySelector('.cp input[type="number"]');
+
+    if (!nameInput) return;
+
+    const name = nameInput.value.trim();
+    const qty  = parseFloat(qtyInput?.value) || 0;
+    const price = parseFloat(priceInput?.value) || 0;
+
+    // Reset invalid
+    nameInput.classList.remove('invalid');
+    if (qtyInput) qtyInput.classList.remove('invalid');
+    if (priceInput) priceInput.classList.remove('invalid');
+
+    if (name === '') {
+      nameInput.classList.add('invalid');
+      hasEmptyProduct = true;
+      ok = false;
+    }
+
+    if (qty <= 0) {
+      if (qtyInput) qtyInput.classList.add('invalid');
+      hasProductError = true;
+      ok = false;
+    }
+
+    if (price < 0) {   // đã ngăn ở oninput, nhưng vẫn kiểm tra phòng trường hợp
+      if (priceInput) priceInput.classList.add('invalid');
+      hasProductError = true;
+      ok = false;
+    }
+  });
+
+  // 3. Phí giao hàng (đã ngăn âm ở oninput)
+  const shippingFeeEl = document.getElementById('shippingFee');
+  shippingFeeEl.classList.remove('invalid');
+
+  if (parseFloat(shippingFeeEl.value) < 0) {
+    shippingFeeEl.classList.add('invalid');
+    ok = false;
+  }
+
+  // Thông báo lỗi
+  if (hasEmptyProduct) {
+    showToast('Vui lòng nhập tên sản phẩm cho tất cả các dòng!', 'err');
+  } else if (hasProductError) {
+    showToast('Số lượng phải > 0 và đơn giá không được âm', 'err');
+  } else if (!ok) {
+    showToast('Vui lòng điền đầy đủ các trường bắt buộc (*)', 'err');
+  }
+
   return ok;
 }
 
@@ -480,6 +564,12 @@ function showToast(msg, type) {
 ['customerName','phone','address'].forEach(id =>
   document.getElementById(id)?.addEventListener('input', function(){ this.classList.remove('invalid') })
 );
+
+document.getElementById('shippingFee')?.addEventListener('input', function() {
+  sanitizeMinValue(this, 0);
+  this.classList.remove('invalid');
+  calcSummary();
+});
 
 
 /* ─── LOAD SHIPPERS ─── */

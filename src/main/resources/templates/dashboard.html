@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+</head>
+<body>
+
+<div th:replace="~{fragments/layout :: main('Tổng quan - DeliveryMgr', ~{::div.content})}">
+  <div class="content">
+
+    <style>
+      /* ── DATE RANGE TOOLBAR ───────────────────────── */
+      .dash-toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 10px 14px;
+        box-shadow: var(--shadow-sm);
+      }
+      .preset-group { display: flex; gap: 4px; flex-wrap: wrap; }
+      .preset-btn {
+        padding: 5px 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text-2);
+        font-size: 12.5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .13s;
+        white-space: nowrap;
+      }
+      .preset-btn:hover  { background: var(--hover); color: var(--text-1); border-color: var(--border-strong); }
+      .preset-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+      .toolbar-sep {
+        width: 1px; height: 24px;
+        background: var(--border); flex-shrink: 0;
+      }
+      .date-range-wrap { display: flex; align-items: center; gap: 6px; }
+      .date-range-wrap label { font-size: 12px; color: var(--text-3); font-weight: 600; }
+      .date-input {
+        padding: 5px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--text-1);
+        font-size: 12.5px;
+        font-family: var(--mono);
+        outline: none;
+        transition: border .13s;
+      }
+      .date-input:focus { border-color: var(--accent); }
+      .apply-btn {
+        padding: 5px 14px;
+        border-radius: var(--radius-sm);
+        border: none;
+        background: var(--accent);
+        color: #fff;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background .13s;
+      }
+      .apply-btn:hover { background: #2450d0; }
+      .toolbar-spacer { flex: 1; }
+      .range-label {
+        font-size: 11.5px;
+        color: var(--text-3);
+        font-family: var(--mono);
+        white-space: nowrap;
+      }
+      .gran-tag {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 20px;
+        background: var(--accent-light);
+        color: var(--accent);
+        border: 1px solid var(--accent-border);
+        white-space: nowrap;
+      }
+
+      /* ── KPI CARDS ─────────────────────────────────── */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+      .kpi-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 18px 20px;
+        box-shadow: var(--shadow-sm);
+        min-width: 0;
+        transition: box-shadow .15s;
+      }
+      .kpi-card:hover { box-shadow: var(--shadow); }
+      .kpi-label {
+        font-size: 11px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: .7px;
+        color: var(--text-3); margin-bottom: 6px;
+        font-family: var(--mono);
+      }
+      .kpi-value {
+        font-size: 32px; font-weight: 800;
+        letter-spacing: -1px; line-height: 1;
+        margin-bottom: 8px; color: var(--text-1);
+      }
+      .kpi-value.orange { color: #e07a10; }
+      .kpi-value.green  { color: #15803d; }
+      .kpi-value.red    { color: #b91c1c; }
+      .kpi-delta { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+      .kpi-delta.up   { color: #15803d; }
+      .kpi-delta.down { color: #b91c1c; }
+      .kpi-delta.neu  { color: var(--text-3); }
+
+      /* ── CHART CARDS ────────────────────────────────── */
+      .chart-grid   { display: grid; grid-template-columns: 1fr 320px; gap: 14px; margin-bottom: 20px; }
+      .chart-card   { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+      .chart-hd     { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .chart-title  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); font-family: var(--mono); }
+      .chart-body   { padding: 16px 18px; }
+      .chart-hint   { font-size: 11.5px; color: var(--text-3); margin-top: 10px; }
+
+      /* Donut */
+      .donut-wrap   { display: flex; align-items: center; justify-content: center; position: relative; height: 180px; margin-bottom: 14px; }
+      .donut-center { position: absolute; text-align: center; pointer-events: none; }
+      .donut-pct    { font-size: 24px; font-weight: 800; color: var(--text-1); line-height: 1; }
+      .donut-sub    { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+      .legend-list  { display: flex; flex-direction: column; gap: 7px; }
+      .legend-item  { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--text-2); }
+      .legend-left  { display: flex; align-items: center; gap: 7px; }
+      .legend-dot   { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+      .legend-pct   { font-weight: 700; color: var(--text-1); font-size: 12px; }
+
+      /* Top Shipper */
+      .shipper-list { display: flex; flex-direction: column; gap: 12px; padding: 14px 18px; }
+      .shipper-row  { display: flex; align-items: center; gap: 10px; }
+      .shipper-rank {
+        width: 22px; height: 22px; border-radius: 50%;
+        background: var(--surface-2); color: var(--text-2);
+        font-size: 11px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
+      .shipper-rank.gold   { background: #fef3c7; color: #92400e; }
+      .shipper-rank.silver { background: #f1f5f9; color: #475569; }
+      .shipper-rank.bronze { background: #fdf2e9; color: #7c3a00; }
+      .shipper-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-1); }
+      .shipper-meta { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+      .shipper-bar-wrap { flex: 1; height: 5px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
+      .shipper-bar  { height: 100%; background: var(--accent); border-radius: 3px; transition: width .6s ease; }
+
+      /* Recent table */
+      .recent-card  { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 20px; }
+      .recent-hd    { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+      .order-table  { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .order-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); font-family: var(--mono); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+      .order-table td { padding: 11px 16px; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: middle; }
+      .order-table tr:last-child td { border-bottom: none; }
+      .order-table tr:hover td { background: var(--hover); }
+      .order-id   { font-weight: 700; color: var(--accent); font-family: var(--mono); font-size: 12.5px; }
+      .order-name { font-weight: 600; color: var(--text-1); }
+      .order-amt  { font-weight: 700; color: var(--text-1); font-family: var(--mono); }
+      .st { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
+      .st-new       { background: #eff6ff; color: #1d4ed8; }
+      .st-confirmed { background: #fff7ed; color: #c2510a; }
+      .st-completed { background: #f0fdf4; color: #15803d; }
+      .st-cancelled { background: #fef2f2; color: #b91c1c; }
+
+      /* Skeleton */
+      .skel { background: linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; height: 1em; }
+      @keyframes shimmer { to { background-position: -200% 0; } }
+
+      /* Responsive */
+      @media (max-width: 1024px) {
+        .kpi-grid { grid-template-columns: repeat(2,1fr); }
+        .chart-grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 600px) {
+        .kpi-grid { grid-template-columns: 1fr 1fr; }
+        .kpi-value { font-size: 24px; }
+        .dash-toolbar { gap: 6px; }
+      }
+    </style>
+
+    <!-- Page header -->
+    <div class="page-hd">
+      <div>
+        <div class="page-eyebrow">DASHBOARD</div>
+        <h1 class="page-title">Tổng quan hệ thống</h1>
+        <div class="page-sub" id="subTitle">Đang tải dữ liệu...</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="window.location.href='/orders/create'">+ Tạo đơn hàng</button>
+      </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Tổng đơn hàng</div>
+        <div class="kpi-value" id="kTotalOrders">—</div>
+        <div class="kpi-delta neu" id="kGrowth">Đang tải...</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Đang giao</div>
+        <div class="kpi-value orange" id="kDelivering">—</div>
+        <div class="kpi-delta neu" id="kDoneToday">Đang tải...</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Giao thành công</div>
+        <div class="kpi-value green" id="kDone">—</div>
+        <div class="kpi-delta neu" id="kDoneRate">Đang tải...</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Đơn bị hủy</div>
+        <div class="kpi-value red" id="kFailed">—</div>
+        <div class="kpi-delta neu" id="kNewToday">Đang tải...</div>
+      </div>
+    </div>
+
+    <!-- DATE RANGE TOOLBAR -->
+    <div class="dash-toolbar">
+      <div class="preset-group">
+        <button class="preset-btn" data-preset="7d"   onclick="applyPreset(this)">7 ngày</button>
+        <button class="preset-btn" data-preset="30d"  onclick="applyPreset(this)">30 ngày</button>
+        <button class="preset-btn" data-preset="90d"  onclick="applyPreset(this)">3 tháng</button>
+        <button class="preset-btn active" data-preset="6m" onclick="applyPreset(this)">6 tháng</button>
+        <button class="preset-btn" data-preset="1y"   onclick="applyPreset(this)">1 năm</button>
+        <button class="preset-btn" data-preset="mtd"  onclick="applyPreset(this)">Tháng này</button>
+        <button class="preset-btn" data-preset="ytd"  onclick="applyPreset(this)">Năm nay</button>
+      </div>
+      <div class="toolbar-sep"></div>
+      <div class="date-range-wrap">
+        <label>Từ</label>
+        <input type="date" id="inputFrom" class="date-input">
+        <label>đến</label>
+        <input type="date" id="inputTo"   class="date-input">
+        <button class="apply-btn" onclick="applyCustomRange()">Áp dụng</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <span class="range-label" id="rangeLabel"></span>
+      <span class="gran-tag"    id="granTag"></span>
+    </div>
+
+    <!-- ROW 1: Bar + Donut -->
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-hd">
+          <span class="chart-title">ĐƠN HÀNG THEO THỜI GIAN</span>
+          <span class="gran-tag" id="barGranTag" style="font-size:10px"></span>
+        </div>
+        <div class="chart-body">
+          <canvas id="chartBar" height="200"></canvas>
+          <div class="chart-hint" id="barHint"></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-hd"><span class="chart-title">TRẠNG THÁI ĐƠN</span></div>
+        <div class="chart-body">
+          <div class="donut-wrap">
+            <canvas id="chartDonut" width="180" height="180" style="position:relative;z-index:1"></canvas>
+            <div class="donut-center">
+              <div class="donut-pct" id="donutPct">—</div>
+              <div class="donut-sub">Thành công</div>
+            </div>
+          </div>
+          <div class="legend-list" id="donutLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 2: Line + Top Shipper -->
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-hd">
+          <span class="chart-title">DOANH THU (TRIỆU VNĐ)</span>
+          <span class="gran-tag" id="lineGranTag" style="font-size:10px"></span>
+        </div>
+        <div class="chart-body">
+          <canvas id="chartLine" height="200"></canvas>
+          <div class="chart-hint">Chỉ tính đơn hoàn thành · Đơn vị: triệu VNĐ</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-hd"><span class="chart-title">TOP SHIPPER</span></div>
+        <div class="shipper-list" id="shipperList">
+          <div class="skel" style="height:32px"></div>
+          <div class="skel" style="height:32px;margin-top:4px"></div>
+          <div class="skel" style="height:32px;margin-top:4px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent orders -->
+    <div class="recent-card">
+      <div class="recent-hd">
+        <span class="chart-title">ĐƠN HÀNG GẦN ĐÂY</span>
+        <button class="btn btn-default btn-sm" onclick="window.location.href='/orders'">Xem tất cả →</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="order-table">
+          <thead>
+          <tr>
+            <th>Mã đơn</th><th>Khách hàng</th><th>Địa chỉ</th>
+            <th>Ngày tạo</th><th>Tổng tiền</th><th>Trạng thái</th>
+          </tr>
+          </thead>
+          <tbody id="recentBody">
+          <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-3)">Đang tải...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+      // ── Chart instances ──────────────────────────────────────────────
+      let barChart, lineChart, donutChart;
+      Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+      Chart.defaults.color = '#8a8a8a';
+
+      const DONUT_COLORS = ['#15803d','#e07a10','#2f5be8','#b91c1c'];
+      const ACCENT = '#2f5be8';
+
+      // ── Format utils ─────────────────────────────────────────────────
+      const fmt     = n  => Number(n).toLocaleString('vi-VN');
+      const fmtDate = s  => { if (!s) return '—'; const [y,m,d] = s.split('-'); return d+'/'+m+'/'+y; };
+      const fmtMon  = n  => { if (n==null) return '—'; if (n>=1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'')+'M'; if (n>=1e3) return (n/1e3).toFixed(0)+'K'; return fmt(n); };
+      const isoDate = d  => d.toISOString().slice(0,10);
+
+      const STATUS_MAP = {
+        NEW:       {label:'Chờ xử lý', cls:'st-new'},
+        CONFIRMED: {label:'Đang giao',  cls:'st-confirmed'},
+        COMPLETED: {label:'Thành công', cls:'st-completed'},
+        CANCELLED: {label:'Đã hủy',     cls:'st-cancelled'},
+      };
+      const statusBadge = s => { const m=STATUS_MAP[s]||{label:s,cls:'st-new'}; return `<span class="st ${m.cls}">${m.label}</span>`; };
+
+      const GRAN_LABEL = { day:'Theo ngày', week:'Theo tuần', month:'Theo tháng' };
+
+      // ── Date helpers ─────────────────────────────────────────────────
+      function today() { return new Date(); }
+      function addDays(d, n) { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+
+      const PRESETS = {
+        '7d':  () => ({ from: addDays(today(),-6),  to: today() }),
+        '30d': () => ({ from: addDays(today(),-29), to: today() }),
+        '90d': () => ({ from: addDays(today(),-89), to: today() }),
+        '6m':  () => {
+          const t=today(), f=new Date(t.getFullYear(),t.getMonth()-5,1);
+          return { from:f, to:t };
+        },
+        '1y':  () => {
+          const t=today(), f=new Date(t.getFullYear()-1,t.getMonth(),t.getDate());
+          return { from:f, to:t };
+        },
+        'mtd': () => {
+          const t=today(), f=new Date(t.getFullYear(),t.getMonth(),1);
+          return { from:f, to:t };
+        },
+        'ytd': () => {
+          const t=today(), f=new Date(t.getFullYear(),0,1);
+          return { from:f, to:t };
+        },
+      };
+
+      // ── Preset click ─────────────────────────────────────────────────
+      function applyPreset(btn) {
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const { from, to } = PRESETS[btn.dataset.preset]();
+        document.getElementById('inputFrom').value = isoDate(from);
+        document.getElementById('inputTo').value   = isoDate(to);
+        loadDashboard(isoDate(from), isoDate(to));
+      }
+
+      function applyCustomRange() {
+        const f = document.getElementById('inputFrom').value;
+        const t = document.getElementById('inputTo').value;
+        if (!f || !t) { alert('Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc.'); return; }
+        if (f > t)    { alert('Ngày bắt đầu phải trước ngày kết thúc.'); return; }
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        loadDashboard(f, t);
+      }
+
+      // ── Render KPI ───────────────────────────────────────────────────
+      function renderKPI(d) {
+        document.getElementById('kTotalOrders').textContent = fmt(d.totalOrders);
+        document.getElementById('kDelivering').textContent  = fmt(d.delivering);
+        document.getElementById('kDone').textContent        = fmt(d.done);
+        document.getElementById('kFailed').textContent      = fmt(d.failed);
+
+        const g = d.growthPct, gEl = document.getElementById('kGrowth');
+        gEl.className = 'kpi-delta ' + (g>0?'up':g<0?'down':'neu');
+        gEl.textContent = (g>0?'▲ +':g<0?'▼ ':'') + Math.abs(g) + '% so với tháng trước';
+
+        const dt = document.getElementById('kDoneToday');
+        dt.className = 'kpi-delta ' + (d.doneToday>0?'up':'neu');
+        dt.textContent = (d.doneToday>0?'▲ ':'') + fmt(d.doneToday) + ' hoàn thành hôm nay';
+
+        const dr = document.getElementById('kDoneRate');
+        dr.className = 'kpi-delta ' + (d.doneRate>=80?'up':'neu');
+        dr.textContent = '▲ ' + d.doneRate + '% tỉ lệ thành công';
+
+        const nt = document.getElementById('kNewToday');
+        nt.className = 'kpi-delta ' + (d.newToday>0?'up':'neu');
+        nt.textContent = (d.newToday>0?'▲ ':'') + fmt(d.newToday) + ' đơn mới hôm nay';
+
+        const now = new Date();
+        document.getElementById('subTitle').textContent =
+                'Cập nhật lúc ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0')
+                + ' · ' + fmt(d.totalShippers) + ' shipper hoạt động';
+
+        const fl = fmtDate(d.from) + ' – ' + fmtDate(d.to);
+        document.getElementById('rangeLabel').textContent = fl;
+        const gran = GRAN_LABEL[d.granularity] || d.granularity;
+        document.getElementById('granTag').textContent      = gran;
+        document.getElementById('barGranTag').textContent   = gran;
+        document.getElementById('lineGranTag').textContent  = gran;
+      }
+
+      // ── Bar chart ────────────────────────────────────────────────────
+      function renderBar(data, granularity) {
+        const ctx = document.getElementById('chartBar').getContext('2d');
+        if (barChart) barChart.destroy();
+        const last = data.length - 1;
+        barChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.map(r => r.month),
+            datasets: [{
+              label: 'Số đơn',
+              data:  data.map(r => r.count),
+              backgroundColor: data.map((_,i) => i===last ? ACCENT : 'rgba(47,91,232,0.15)'),
+              borderColor:     data.map((_,i) => i===last ? ACCENT : 'rgba(47,91,232,0.4)'),
+              borderWidth: 1.5, borderRadius: 5, borderSkipped: false,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display:false }, tooltip: { callbacks: { label: c=>' '+fmt(c.raw)+' đơn' } } },
+            scales: {
+              x: { grid:{display:false}, border:{display:false},
+                ticks: { maxRotation: granularity==='day'?45:0, font:{size:11} } },
+              y: { grid:{color:'rgba(0,0,0,.05)'}, border:{display:false}, ticks:{callback:v=>fmt(v)} }
+            }
+          }
+        });
+        document.getElementById('barHint').textContent =
+                granularity==='day'  ? 'Theo từng ngày trong khoảng đã chọn' :
+                        granularity==='week' ? 'Gộp theo tuần' : 'Gộp theo tháng';
+      }
+
+      // ── Line chart ───────────────────────────────────────────────────
+      function renderLine(data, granularity) {
+        const ctx = document.getElementById('chartLine').getContext('2d');
+        if (lineChart) lineChart.destroy();
+        const grad = ctx.createLinearGradient(0,0,0,200);
+        grad.addColorStop(0,'rgba(47,91,232,0.18)');
+        grad.addColorStop(1,'rgba(47,91,232,0)');
+        lineChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.map(r=>r.month),
+            datasets: [{
+              label: 'Doanh thu (triệu VNĐ)',
+              data:  data.map(r=>r.revenue),
+              borderColor: ACCENT, borderWidth: 2.5,
+              backgroundColor: grad, fill: true, tension: 0.4,
+              pointBackgroundColor: ACCENT, pointRadius: 4, pointHoverRadius: 6,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend:{display:false}, tooltip:{ callbacks:{ label:c=>' '+c.raw.toFixed(2)+' tr.VNĐ' } } },
+            scales: {
+              x: { grid:{display:false}, border:{display:false},
+                ticks:{ maxRotation: granularity==='day'?45:0, font:{size:11} } },
+              y: { grid:{color:'rgba(0,0,0,.05)'}, border:{display:false}, ticks:{ callback:v=>v+'M' } }
+            }
+          }
+        });
+      }
+
+      // ── Donut ────────────────────────────────────────────────────────
+      function renderDonut(data) {
+        const ctx = document.getElementById('chartDonut').getContext('2d');
+        if (donutChart) donutChart.destroy();
+        donutChart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: data.map(r=>r.label),
+            datasets:[{ data:data.map(r=>r.count), backgroundColor:DONUT_COLORS, borderWidth:0, hoverOffset:6 }]
+          },
+          options: {
+            cutout:'70%', responsive:false,
+            plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>' '+fmt(c.raw)+' đơn ('+data[c.dataIndex].pct+'%)' } } }
+          }
+        });
+        const completed = data.find(d=>d.label==='Thành công');
+        document.getElementById('donutPct').textContent = (completed?completed.pct:0)+'%';
+        document.getElementById('donutLegend').innerHTML = data.map((r,i)=>`
+    <div class="legend-item">
+      <div class="legend-left"><span class="legend-dot" style="background:${DONUT_COLORS[i]}"></span><span>${r.label}</span></div>
+      <span class="legend-pct">${r.pct}%</span>
+    </div>`).join('');
+      }
+
+      // ── Top Shipper ──────────────────────────────────────────────────
+      const RANK_CLS = ['gold','silver','bronze','',''];
+      function renderShippers(data) {
+        const el = document.getElementById('shipperList');
+        if (!data.length) {
+          el.innerHTML = '<p style="color:var(--text-3);font-size:13px;text-align:center;padding:12px 0">Không có dữ liệu trong khoảng này</p>';
+          return;
+        }
+        const max = data[0].count || 1;
+        el.innerHTML = data.map((s,i)=>`
+    <div class="shipper-row">
+      <div class="shipper-rank ${RANK_CLS[i]||''}">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span class="shipper-name">${s.name}</span>
+          <span class="shipper-meta">${fmt(s.count)} đơn · ${s.successRate}%</span>
+        </div>
+        <div class="shipper-bar-wrap"><div class="shipper-bar" style="width:${Math.round(s.count/max*100)}%"></div></div>
+      </div>
+    </div>`).join('');
+      }
+
+      // ── Recent orders ─────────────────────────────────────────────────
+      function renderRecent(orders) {
+        const tbody = document.getElementById('recentBody');
+        if (!orders.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-3)">Không có đơn hàng trong khoảng thời gian này</td></tr>';
+          return;
+        }
+        tbody.innerHTML = orders.map(o=>`
+    <tr onclick="window.location.href='/orders/${o.orderId}'" style="cursor:pointer">
+      <td><span class="order-id">${o.id}</span></td>
+      <td><span class="order-name">${o.customerName}</span></td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.address||'—'}</td>
+      <td>${fmtDate(o.orderDate)}</td>
+      <td><span class="order-amt">${fmtMon(o.totalAmount)}</span></td>
+      <td>${statusBadge(o.status)}</td>
+    </tr>`).join('');
+      }
+
+      // ── Main loader ───────────────────────────────────────────────────
+      async function loadDashboard(from, to) {
+        let url = '/api/dashboard/stats';
+        if (from && to) url += '?from=' + from + '&to=' + to;
+        try {
+          const data = await (await fetch(url)).json();
+          renderKPI(data);
+          renderBar(data.monthlyOrders, data.granularity);
+          renderLine(data.monthlyRevenue, data.granularity);
+          renderDonut(data.orderStatus);
+          renderShippers(data.topShippers);
+          renderRecent(data.recentOrders);
+        } catch(err) {
+          console.error(err);
+          document.getElementById('subTitle').textContent = '⚠ Không thể tải dữ liệu.';
+        }
+      }
+
+      // ── Init ──────────────────────────────────────────────────────────
+      document.addEventListener('DOMContentLoaded', () => {
+        // Set default inputs to match active preset (6 tháng)
+        const { from, to } = PRESETS['6m']();
+        document.getElementById('inputFrom').value = isoDate(from);
+        document.getElementById('inputTo').value   = isoDate(to);
+        loadDashboard(isoDate(from), isoDate(to));
+      });
+    </script>
+
+  </div>
+</div>
+</body>
+</html>

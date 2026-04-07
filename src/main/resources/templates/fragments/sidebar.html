@@ -1,0 +1,14 @@
+<div th:fragment="sidebar">
+    <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+    <div class="drawer" id="drawer">
+        <div class="drawer-head">
+            <div class="nav-logo" style="width:24px;height:24px;font-size:12px;border-radius:5px">🚚</div>
+            <span style="font-size:14px;font-weight:700">DeliveryMgr</span>
+        </div>
+        <a th:href="@{/dashboard}" class="drawer-item active">Dashboard</a>
+        <a th:href="@{/orders}" href="/orders" class="drawer-item">Đơn hàng</a>
+        <a th:href="@{/deliveries}" href="/deliveries" class="drawer-item">Giao hàng</a>
+        <a href="#" class="drawer-item dim">Khách hàng</a>
+        <a href="#" class="drawer-item dim">Báo cáo</a>
+    </div>
+</div>

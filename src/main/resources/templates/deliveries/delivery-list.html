@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý giao hàng</title>
+</head>
+<body>
+
+<div th:replace="~{fragments/layout :: main('Quản lý giao hàng - DeliveryMgr', ~{::div.content})}">
+  <div class="content">
+
+    <div class="page-hd">
+      <div>
+        <div class="page-eyebrow">GIAO HÀNG</div>
+        <h1 class="page-title">Quản lý giao hàng</h1>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="window.location.href='/deliveries/create'">+ Tạo chuyến giao</button>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stats-row">
+      <div class="stat-card" onclick="switchTabById('WAITING')"   style="cursor:pointer">
+        <div class="stat-label">Chờ lấy hàng</div>
+        <div class="stat-num" id="statWaiting">—</div>
+      </div>
+      <div class="stat-card" onclick="switchTabById('DELIVERING')" style="cursor:pointer">
+        <div class="stat-label">Đang trên đường</div>
+        <div class="stat-num" id="statDelivering">—</div>
+      </div>
+      <div class="stat-card" onclick="switchTabById('DONE')"      style="cursor:pointer">
+        <div class="stat-label">Giao thành công</div>
+        <div class="stat-num" id="statDone">—</div>
+      </div>
+      <div class="stat-card" onclick="switchTabById('FAILED')"    style="cursor:pointer">
+        <div class="stat-label">Giao thất bại</div>
+        <div class="stat-num" id="statFailed">—</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-ALL"        onclick="switchTab(this,'ALL')">Tất cả (<span id="cntAll">0</span>)</button>
+      <button class="tab-btn"        id="tab-WAITING"    onclick="switchTab(this,'WAITING')">Chờ lấy (<span id="cntWaiting">0</span>)</button>
+      <button class="tab-btn"        id="tab-DELIVERING" onclick="switchTab(this,'DELIVERING')">Đang giao (<span id="cntDelivering">0</span>)</button>
+      <button class="tab-btn"        id="tab-DONE"       onclick="switchTab(this,'DONE')">Thành công (<span id="cntDone">0</span>)</button>
+      <button class="tab-btn"        id="tab-FAILED"     onclick="switchTab(this,'FAILED')">Thất bại (<span id="cntFailed">0</span>)</button>
+    </div>
+
+    <!-- Table -->
+    <div class="card card-p" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto">
+        <table class="del-table">
+          <thead>
+            <tr>
+              <th>Mã giao</th><th>Đơn hàng</th><th>Khách hàng</th>
+              <th>Địa chỉ</th><th>Tài xế</th><th>Thời gian dự kiến</th>
+              <th>Trạng thái</th><th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="delBody">
+            <tr><td colspan="8" class="del-loading">
+              <span class="dots"><span></span><span></span><span></span></span>
+              <span style="margin-left:10px">Đang tải...</span>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Phân công tài xế -->
+<div class="dl-overlay" id="assignModal">
+  <div class="dl-modal">
+    <div class="dl-modal-hd">📋 Phân công tài xế <button class="dl-modal-x" onclick="closeAssignModal()">✕</button></div>
+    <div class="dl-modal-body">
+      <p id="assignDesc" style="font-size:13px;color:var(--text-2);margin-bottom:14px"></p>
+      <label class="dl-lbl">Chọn tài xế <span style="color:#dc3545">*</span></label>
+      <select id="shipperSel" class="dl-input">
+        <option value="">-- Đang tải... --</option>
+      </select>
+      <div id="shipperErr" style="color:#dc3545;font-size:12px;margin-top:5px;display:none">Vui lòng chọn tài xế!</div>
+    </div>
+    <div class="dl-modal-ft">
+      <button class="btn btn-default" onclick="closeAssignModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="confirmAssign()">✅ Xác nhận phân công</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Xác nhận đổi trạng thái -->
+<div class="dl-overlay" id="statusModal">
+  <div class="dl-modal">
+    <div class="dl-modal-hd">🔄 Xác nhận đổi trạng thái <button class="dl-modal-x" onclick="closeStatusModal()">✕</button></div>
+    <div class="dl-modal-body">
+      <p id="statusDesc" style="font-size:13.5px;color:var(--text-1);line-height:1.7"></p>
+    </div>
+    <div class="dl-modal-ft">
+      <button class="btn btn-default" onclick="closeStatusModal()">Huỷ bỏ</button>
+      <button class="btn btn-primary" onclick="confirmStatus()">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Xác nhận xoá -->
+<div class="dl-overlay" id="deleteModal">
+  <div class="dl-modal">
+    <div class="dl-modal-hd" style="color:#dc3545">🗑 Xác nhận xoá <button class="dl-modal-x" onclick="closeDeleteModal()">✕</button></div>
+    <div class="dl-modal-body">
+      <p id="deleteDesc" style="font-size:13.5px;color:var(--text-1);line-height:1.7"></p>
+    </div>
+    <div class="dl-modal-ft">
+      <button class="btn btn-default" onclick="closeDeleteModal()">Huỷ bỏ</button>
+      <button class="dl-btn-del" onclick="confirmDelete()">Xoá chuyến giao</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;transition:all .15s}
+.stat-card:hover{border-color:#adb5bd;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.stat-label{font-size:13px;color:var(--text-2);margin-bottom:6px;font-weight:500}
+.stat-num{font-size:32px;font-weight:800;color:var(--text-1);line-height:1}
+.tab-bar{display:flex;gap:4px;margin-bottom:14px;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:5px;width:fit-content}
+.tab-btn{background:none;border:none;border-radius:calc(var(--r) - 2px);padding:7px 14px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{background:var(--bg-2);color:var(--text-1)}
+.tab-btn.active{background:var(--text-1);color:#fff}
+.del-table{width:100%;border-collapse:collapse;font-size:13px}
+.del-table thead th{background:var(--bg-2);padding:10px 14px;text-align:left;font-weight:700;font-size:12px;color:var(--text-2);border-bottom:1.5px solid var(--border);white-space:nowrap}
+.del-table tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+.del-table tbody tr:hover{background:var(--bg-2)}
+.del-table tbody tr:last-child{border-bottom:none}
+.del-table tbody td{padding:10px 14px;vertical-align:middle}
+.del-loading{text-align:center;padding:40px;color:var(--text-2)}
+.col-id{font-weight:700;font-size:12.5px;white-space:nowrap}
+.col-addr{max-width:160px;font-size:12.5px;color:var(--text-2)}
+.col-time{font-size:12.5px;color:var(--text-2);white-space:nowrap}
+.unassigned{color:var(--text-3);font-style:italic;font-size:12.5px}
+/* Status select — dùng đúng enum WAITING/DELIVERING/DONE/FAILED */
+.status-select{border:1.5px solid;border-radius:20px;padding:4px 10px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;outline:none;transition:all .15s;width:auto;appearance:none;-webkit-appearance:none;text-align:center}
+.status-select:hover{filter:brightness(.95)}
+.status-select:disabled{opacity:.6;cursor:not-allowed}
+.status-select.s-WAITING   {background:#e8f0fe;color:#1a56db;border-color:#b6ccf7}
+.status-select.s-DELIVERING{background:#fff3cd;color:#856404;border-color:#ffe08a}
+.status-select.s-DONE      {background:#d1e7dd;color:#0a5c36;border-color:#a3cfbb}
+.status-select.s-FAILED    {background:#f8d7da;color:#842029;border-color:#f5c6cb}
+.act-wrap{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.btn-sm{display:inline-flex;align-items:center;gap:3px;padding:5px 10px;border-radius:5px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid;transition:all .15s;background:#fff;white-space:nowrap}
+.btn-sm-view{border-color:var(--border);color:var(--text-2)}
+.btn-sm-view:hover{border-color:#1a56db;color:#1a56db;background:#e8f0fe}
+.btn-sm-assign{border-color:var(--border);color:var(--text-2)}
+.btn-sm-assign:hover{border-color:#198754;color:#198754;background:#d1e7dd}
+.btn-sm-del{border-color:var(--border);color:#adb5bd}
+.btn-sm-del:hover{border-color:#dc3545;color:#dc3545;background:#fff5f5}
+/* Modal */
+.dl-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center}
+.dl-overlay.show{display:flex}
+.dl-modal{background:#fff;border-radius:10px;width:430px;max-width:93vw;box-shadow:0 8px 32px rgba(0,0,0,.18);animation:dlIn .2s ease}
+@keyframes dlIn{from{transform:scale(.93);opacity:0}to{transform:scale(1);opacity:1}}
+.dl-modal-hd{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--border);font-size:15px;font-weight:700;color:var(--text-1)}
+.dl-modal-x{background:none;border:none;font-size:15px;cursor:pointer;color:var(--text-2);padding:2px 6px;border-radius:4px}
+.dl-modal-x:hover{background:var(--bg-2)}
+.dl-modal-body{padding:20px}
+.dl-modal-ft{display:flex;justify-content:flex-end;gap:10px;padding:12px 20px;border-top:1px solid var(--border);background:var(--bg-2);border-radius:0 0 10px 10px}
+.dl-lbl{font-size:12.5px;font-weight:700;color:var(--text-1);display:block;margin-bottom:6px}
+.dl-input{width:100%;border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:13.5px;color:var(--text-1);outline:none;transition:border-color .15s;background:#fff}
+.dl-input:focus{border-color:#1a56db;box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+.dl-input.invalid{border-color:#dc3545!important}
+.dl-btn-del{background:#dc3545;color:#fff;border:none;padding:8px 18px;border-radius:var(--r);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.dl-btn-del:hover{background:#b02a37}
+.dots{display:inline-flex;gap:4px}
+.dots span{width:6px;height:6px;border-radius:50%;background:var(--text-3);animation:dotB 1s ease-in-out infinite}
+.dots span:nth-child(2){animation-delay:.15s}
+.dots span:nth-child(3){animation-delay:.3s}
+@keyframes dotB{0%,80%,100%{transform:scale(.8);opacity:.4}40%{transform:scale(1.2);opacity:1}}
+.empty-state{text-align:center;padding:50px;color:var(--text-3)}
+@media(max-width:768px){.stats-row{grid-template-columns:1fr 1fr}.tab-bar{flex-wrap:wrap;width:100%}}
+</style>
+
+<script>
+const API_BASE = '';
+
+let allDeliveries = [], currentTab = 'ALL', shipperList = [];
+let pAssignId = null;
+let pStatusId = null, pStatusNew = null, pStatusPrev = null, pStatusSel = null;
+let pDeleteId = null;
+
+// Dùng đúng enum DeliveryStatus gốc: WAITING, DELIVERING, DONE, FAILED
+const STATUS_LABEL = {
+  WAITING   : 'Chờ lấy',
+  DELIVERING: 'Đang giao',
+  DONE      : 'Thành công',
+  FAILED    : 'Thất bại',
+};
+
+/* ── LOAD ── */
+async function loadDeliveries() {
+  try {
+    const res  = await fetch(API_BASE + '/api/deliveries');
+    const data = await res.json();
+    allDeliveries = Array.isArray(data) ? data : [];
+    renderStats();
+    renderTable();
+  } catch {
+    document.getElementById('delBody').innerHTML =
+      `<tr><td colspan="8" class="del-loading" style="color:#dc3545">❌ Không kết nối được server.</td></tr>`;
+  }
+}
+
+async function loadShippers() {
+  try {
+    const res = await fetch(API_BASE + '/api/deliveries/shippers');
+    shipperList = await res.json();
+  } catch { shipperList = []; }
+}
+
+/* ── RENDER STATS ── */
+function renderStats() {
+  const cnt = { WAITING:0, DELIVERING:0, DONE:0, FAILED:0 };
+  allDeliveries.forEach(d => { if (cnt[d.status] !== undefined) cnt[d.status]++; });
+  document.getElementById('statWaiting').textContent    = cnt.WAITING;
+  document.getElementById('statDelivering').textContent = cnt.DELIVERING;
+  document.getElementById('statDone').textContent       = cnt.DONE;
+  document.getElementById('statFailed').textContent     = cnt.FAILED;
+  document.getElementById('cntAll').textContent         = allDeliveries.length;
+  document.getElementById('cntWaiting').textContent     = cnt.WAITING;
+  document.getElementById('cntDelivering').textContent  = cnt.DELIVERING;
+  document.getElementById('cntDone').textContent        = cnt.DONE;
+  document.getElementById('cntFailed').textContent      = cnt.FAILED;
+}
+
+/* ── RENDER TABLE ── */
+function renderTable() {
+  const rows = currentTab === 'ALL'
+    ? allDeliveries
+    : allDeliveries.filter(d => d.status === currentTab);
+
+  if (!rows.length) {
+    document.getElementById('delBody').innerHTML =
+      `<tr><td colspan="8"><div class="empty-state">📭 Không có chuyến giao nào</div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('delBody').innerHTML = rows.map(d => {
+    // Lấy orderId an toàn — null/undefined → không render link
+    const oid  = d.order?.id ?? null;
+    const cust = d.order?.customerName || '—';
+    const addr = d.order?.address      || '—';
+    const has  = !!d.shipperName;
+    const st   = d.status || 'WAITING';
+
+    // Cột đơn hàng: chỉ render link nếu có orderId hợp lệ
+    const orderCell = oid != null
+      ? `<a href="/orders/${oid}" style="color:#1a56db;text-decoration:none;font-weight:700">DH-${oid}</a>`
+      : `<span style="color:var(--text-3);font-style:italic">Không có</span>`;
+
+    // Nút Xem: chỉ hiện nếu có orderId
+    const btnView = oid != null
+      ? `<button class="btn-sm btn-sm-view" onclick="window.location.href='/orders/${oid}'">👁 Xem</button>`
+      : '';
+
+    // Nút Phân công: chỉ hiện nếu chưa có shipper VÀ có orderId
+    const btnAssign = (!has && oid != null)
+      ? `<button class="btn-sm btn-sm-assign" onclick="openAssignModal(${d.id},'${esc(cust)}',${oid})">📋 Phân công</button>`
+      : '';
+
+    // Nút Xoá: luôn hiện, truyền orderId (có thể null → hiển thị 'N/A' trong modal)
+    const btnDel = `<button class="btn-sm btn-sm-del" onclick="openDeleteModal(${d.id},${oid ?? 'null'})">🗑</button>`;
+
+    return `
+    <tr id="drow-${d.id}">
+      <td class="col-id">GH-${d.id}</td>
+      <td class="col-id">${orderCell}</td>
+      <td style="font-weight:600">${esc(cust)}</td>
+      <td class="col-addr" title="${esc(addr)}">${esc(truncate(addr,35))}</td>
+      <td class="${has?'':'unassigned'}">${has ? esc(d.shipperName) : 'Chưa phân công'}</td>
+      <td class="col-time">${esc(d.expectedTime||'—')}</td>
+      <td>
+        <select id="sel-${d.id}" class="status-select s-${st}"
+                onmousedown="this.dataset.prev=this.value"
+                onchange="openStatusModal(${d.id}, this)">
+          <option value="WAITING"    ${st==='WAITING'    ?'selected':''}>⏳ Chờ lấy</option>
+          <option value="DELIVERING" ${st==='DELIVERING' ?'selected':''}>🚚 Đang giao</option>
+          <option value="DONE"       ${st==='DONE'       ?'selected':''}>✅ Thành công</option>
+          <option value="FAILED"     ${st==='FAILED'     ?'selected':''}>❌ Thất bại</option>
+        </select>
+      </td>
+      <td>
+        <div class="act-wrap">
+          ${btnView}
+          ${btnAssign}
+          ${btnDel}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ══ MODAL: ĐỔI TRẠNG THÁI ══ */
+function openStatusModal(deliveryId, sel) {
+  const nw = sel.value;
+  const pv = sel.dataset.prev || sel.value;
+  if (nw === pv) return;
+
+  pStatusId = deliveryId; pStatusNew = nw; pStatusPrev = pv; pStatusSel = sel;
+
+  document.getElementById('statusDesc').innerHTML =
+    `Xác nhận đổi trạng thái chuyến giao <b>GH-${deliveryId}</b><br>
+     từ <b>${STATUS_LABEL[pv]||pv}</b> → <b>${STATUS_LABEL[nw]||nw}</b>?`;
+  document.getElementById('statusModal').classList.add('show');
+}
+
+function closeStatusModal() {
+  // Rollback dropdown
+  if (pStatusSel && pStatusPrev) {
+    pStatusSel.value     = pStatusPrev;
+    pStatusSel.className = `status-select s-${pStatusPrev}`;
+  }
+  document.getElementById('statusModal').classList.remove('show');
+  pStatusId = pStatusNew = pStatusPrev = pStatusSel = null;
+}
+
+async function confirmStatus() {
+  document.getElementById('statusModal').classList.remove('show');
+  const sel = pStatusSel, nw = pStatusNew, id = pStatusId;
+  if (sel) { sel.disabled = true; sel.className = `status-select s-${nw}`; }
+
+  try {
+    // Gọi PUT /api/deliveries/{id}/status với đúng enum value
+    // Nếu chuyển sang DONE → ghi deliveryDate = thời điểm hiện tại (ISO 8601)
+    const body = { status: nw };
+    if (nw === 'DONE') {
+      body.deliveryDate = new Date().toISOString(); // VD: "2026-03-23T15:30:00.000Z"
+    }
+    const res = await fetch(`${API_BASE}/api/deliveries/${id}/status`, {
+      method : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify(body)
+    });
+
+    if (!res.ok) throw new Error();
+
+    // Cập nhật local state
+    const item = allDeliveries.find(d => d.id === id);
+    if (item) item.status = nw;
+    renderStats();
+
+    // Ẩn hàng nếu đang filter tab
+    if (currentTab !== 'ALL' && currentTab !== nw) {
+      const row = document.getElementById(`drow-${id}`);
+      if (row) {
+        row.style.transition = 'opacity .3s';
+        row.style.opacity    = '0';
+        setTimeout(renderTable, 350);
+      }
+    }
+    showToast('✅ Cập nhật trạng thái thành công!' + (nw === 'DONE' ? ' Đơn hàng đã được đánh dấu thanh toán.' : ''), 'success');
+  } catch {
+    if (sel) { sel.value = pStatusPrev; sel.className = `status-select s-${pStatusPrev}`; }
+    showToast('❌ Cập nhật thất bại!', 'error');
+  } finally {
+    if (sel) sel.disabled = false;
+    pStatusId = pStatusNew = pStatusPrev = pStatusSel = null;
+  }
+}
+
+/* ══ MODAL: PHÂN CÔNG TÀI XẾ ══ */
+function openAssignModal(deliveryId, custName, orderId) {
+  pAssignId = deliveryId;
+  document.getElementById('assignDesc').textContent =
+    `Phân công tài xế cho đơn DH-${orderId} (${custName})`;
+
+  const sel = document.getElementById('shipperSel');
+  sel.className = 'dl-input';
+  sel.innerHTML = shipperList.length
+    ? `<option value="">-- Chọn tài xế --</option>` +
+      shipperList.map(s =>
+        `<option value="${esc(s.fullName)}">${esc(s.fullName)} (${esc(s.username)})</option>`
+      ).join('')
+    : `<option value="">-- Không có tài xế nào (cần user role SHIPPER) --</option>`;
+
+  document.getElementById('shipperErr').style.display = 'none';
+  document.getElementById('assignModal').classList.add('show');
+}
+
+function closeAssignModal() {
+  document.getElementById('assignModal').classList.remove('show');
+  pAssignId = null;
+}
+
+async function confirmAssign() {
+  const sel = document.getElementById('shipperSel');
+  if (!sel.value) {
+    sel.classList.add('invalid');
+    document.getElementById('shipperErr').style.display = 'block';
+    return;
+  }
+  const name = sel.value, id = pAssignId;
+  closeAssignModal();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/deliveries/${id}/status`, {
+      method : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ status: 'WAITING', shipperName: name })
+    });
+    if (res.ok) {
+      showToast(`✅ Đã phân công tài xế: ${name}`, 'success');
+      loadDeliveries();
+    } else {
+      showToast('❌ Phân công thất bại!', 'error');
+    }
+  } catch { showToast('❌ Không kết nối được server!', 'error'); }
+}
+
+/* ══ MODAL: XOÁ ══ */
+function openDeleteModal(deliveryId, orderId) {
+  pDeleteId = deliveryId;
+  const orderStr = (orderId != null && orderId !== 'null')
+    ? `đơn <b>DH-${orderId}</b>`
+    : 'đơn hàng liên kết';
+  document.getElementById('deleteDesc').innerHTML =
+    `Bạn có chắc muốn xoá chuyến giao <b>GH-${deliveryId}</b> của ${orderStr}?<br>
+     <span style="color:#dc3545;font-size:12.5px">Đơn hàng sẽ về trạng thái Mới. Không thể hoàn tác.</span>`;
+  document.getElementById('deleteModal').classList.add('show');
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('show');
+  pDeleteId = null;
+}
+
+async function confirmDelete() {
+  const id = pDeleteId;
+  closeDeleteModal();
+  try {
+    const res = await fetch(`${API_BASE}/api/deliveries/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      showToast(`✅ Đã xoá chuyến giao GH-${id}`, 'success');
+      allDeliveries = allDeliveries.filter(d => d.id !== id);
+      renderStats();
+      renderTable();
+    } else {
+      showToast('❌ Xoá thất bại!', 'error');
+    }
+  } catch { showToast('❌ Không kết nối được server!', 'error'); }
+}
+
+/* ── TAB ── */
+function switchTab(el, tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentTab = tab;
+  renderTable();
+}
+function switchTabById(tab) {
+  const el = document.getElementById('tab-' + tab);
+  if (el) switchTab(el, tab);
+}
+
+/* ── ĐÓNG MODAL KHI CLICK OVERLAY ── */
+['assignModal','statusModal','deleteModal'].forEach(id => {
+  document.getElementById(id)?.addEventListener('click', e => {
+    if (e.target.id === id) {
+      if (id === 'statusModal') closeStatusModal();
+      else if (id === 'assignModal') closeAssignModal();
+      else closeDeleteModal();
+    }
+  });
+});
+
+function esc(s)       { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function truncate(s,n){ return s && s.length > n ? s.slice(0,n)+'…' : (s||''); }
+
+Promise.all([loadDeliveries(), loadShippers()]);
+</script>
+
+</body>
+</html>

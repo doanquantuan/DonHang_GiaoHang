@@ -1,0 +1,24 @@
+{
+  "name": "donhang_giaohang",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/doanquantuan/DonHang_GiaoHang.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/doanquantuan/DonHang_GiaoHang/issues"
+  },
+  "homepage": "https://github.com/doanquantuan/DonHang_GiaoHang#readme",
+  "devDependencies": {
+    "cypress": "^15.13.0"
+  }
+}

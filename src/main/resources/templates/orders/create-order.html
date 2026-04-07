@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Thêm đơn hàng mới – DeliveryMgr</title>
+</head>
+<body>
+
+<!-- Topbar standalone (chỉ hiển thị khi mở file trực tiếp; Thymeleaf layout sẽ thay thế phần này) -->
+<nav class="topbar" th:remove="all">
+  <a class="topbar-brand" href="/">
+    <i class="bi bi-truck" style="font-size:18px"></i> DeliveryMgr
+  </a>
+  <div class="topbar-nav">
+    <a href="/orders" class="active">Đơn hàng</a>
+    <a href="/deliveries">Giao hàng</a>
+    <a href="/users">Người dùng</a>
+  </div>
+</nav>
+
+<div th:replace="~{fragments/layout :: main('Thêm đơn hàng mới – DeliveryMgr', ~{::div.content})}">
+
+  <div class="content">
+  <div class="page-hd">
+    <div>
+      <div class="page-eyebrow">ĐƠN HÀNG</div>
+      <h1 class="page-title">Thêm đơn hàng mới</h1>
+      <div class="page-sub">Điền thông tin bên dưới để tạo đơn hàng mới.</div>
+    </div>
+  </div>
+
+  <div class="form-layout">
+
+    <!-- ══════ CỘT TRÁI ══════ -->
+    <div>
+
+      <!-- Thông tin khách hàng -->
+      <div class="panel">
+        <div class="panel-header">Thông tin khách hàng</div>
+        <div class="panel-body">
+          <div class="frow c2">
+            <div class="fg">
+              <label>Họ tên <span class="req">*</span></label>
+              <input type="text" id="customerName" placeholder="Nhập họ và tên..."/>
+            </div>
+            <div class="fg">
+              <label>Số điện thoại <span class="req">*</span></label>
+              <input type="tel" id="phone" placeholder="0xxx xxx xxx"/>
+            </div>
+          </div>
+          <div class="frow c1">
+            <div class="fg">
+              <label>Email</label>
+              <input type="email" id="email" placeholder="email@domain.com"/>
+            </div>
+          </div>
+          <div class="frow c1">
+            <div class="fg">
+              <label>Địa chỉ giao hàng <span class="req">*</span></label>
+              <input type="text" id="address" placeholder="Số nhà, tên đường..."/>
+            </div>
+          </div>
+          <div class="frow c1">
+            <div class="fg">
+              <label>Ghi chú giao hàng</label>
+              <textarea id="deliveryNote" placeholder="Ghi chú cho tài xế..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sản phẩm -->
+      <div class="panel">
+        <div class="panel-header">Sản phẩm</div>
+        <div class="panel-body">
+          <table class="ptable">
+            <thead>
+              <tr>
+                <th class="cn">Tên sản phẩm</th>
+                <th class="cq">SL</th>
+                <th class="cp">Đơn giá</th>
+                <th class="ct">Thành tiền</th>
+                <th class="cd"></th>
+              </tr>
+            </thead>
+            <tbody id="ptbody"></tbody>
+          </table>
+          <button class="btn-add-row" type="button" onclick="addRow()">
+            <i class="bi bi-plus-lg"></i> Thêm sản phẩm
+          </button>
+          <div class="summary">
+            <div class="srow">
+              <span>Tạm tính:</span>
+              <span id="subtotal">0đ</span>
+            </div>
+            <div class="srow">
+              <span>Phí giao hàng:</span>
+              <input type="number" id="shippingFee" value="30000" min="0" step="1000" oninput="calcSummary()"/>
+            </div>
+            <div class="stotal">
+              <span>Tổng:</span>
+              <span id="grandtotal">0đ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════ CỘT PHẢI ══════ -->
+    <div>
+
+      <!-- Trạng thái đơn -->
+      <div class="panel">
+        <div class="panel-header">Trạng thái đơn</div>
+        <div class="panel-body">
+          <span class="status-badge badge-NEW" style="font-size:13px;padding:5px 14px">Mới tạo</span>
+          <input type="hidden" id="status" value="NEW"/>
+          <div class="note-text" style="margin-top:8px">Đơn mới tạo sẽ có trạng thái <b>Mới tạo</b> mặc định.</div>
+        </div>
+      </div>
+
+      <!-- Thanh toán -->
+      <div class="panel">
+        <div class="panel-header">Thanh toán</div>
+        <div class="panel-body">
+          <select id="paymentMethod" style="margin-bottom:10px" onchange="syncPaidCheckboxByPaymentMethod()">
+            <option value="">Hình thức ▾</option>
+            <option value="COD">Tiền mặt (COD)</option>
+            <option value="Chuyển khoản">Chuyển khoản</option>
+            <option value="Ví điện tử">Ví điện tử</option>
+          </select>
+          <div class="check-row">
+            <input type="checkbox" id="paid"/>
+            <label for="paid">Đã thanh toán</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phân công tài xế -->
+      <div class="panel">
+        <div class="panel-header">Phân công tài xế</div>
+        <div class="panel-body">
+          <select id="shipperName">
+            <option value="">-- Chưa phân công --</option>
+          </select>
+          <div class="note-text">Danh sách tài xế có role SHIPPER trong hệ thống</div>
+        </div>
+      </div>
+
+      <!-- Thời gian giao dự kiến -->
+      <div class="panel">
+        <div class="panel-header">Thời gian giao dự kiến</div>
+        <div class="panel-body">
+          <input type="date" id="deliveryDate" style="margin-bottom:10px"/>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="time" id="timeFrom" value="08:00" style="flex:1"/>
+            <span style="color:var(--gray-500);font-weight:700">–</span>
+            <input type="time" id="timeTo" value="12:00" style="flex:1"/>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════ ACTION BAR ══════ -->
+    <div class="action-bar">
+      <p class="val-note">
+        * Validation: Tô đỏ field bắt buộc nếu để trống khi submit.
+        Hiện <b>toast notification</b> xác nhận khi lưu thành công.
+      </p>
+      <button class="btn btn-outline" onclick="goBack()">
+        <i class="bi bi-x-lg"></i> Huỷ bỏ
+      </button>
+      <button class="btn btn-draft" onclick="saveDraft()">
+        <i class="bi bi-floppy"></i> Lưu nháp
+      </button>
+      <button class="btn btn-save" id="submitBtn" onclick="submitOrder()">
+        <div class="spinner" id="spin"></div>
+        <i class="bi bi-check-lg" id="submitIco"></i>
+        Lưu đơn hàng
+      </button>
+    </div>
+
+</div>
+
+  </div>
+</div>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&subset=vietnamese&display=swap');
+:root{
+  --white:#ffffff;
+  --gray-50:#f8f9fa;
+  --gray-100:#f1f3f5;
+  --gray-200:#e9ecef;
+  --gray-300:#dee2e6;
+  --gray-400:#ced4da;
+  --gray-500:#adb5bd;
+  --gray-600:#6c757d;
+  --gray-700:#495057;
+  --gray-800:#343a40;
+  --gray-900:#212529;
+  --primary:#1a56db;
+  --primary-light:#e8f0fe;
+  --danger:#dc3545;
+  --danger-light:#fff5f5;
+  --success:#198754;
+  --success-light:#d1e7dd;
+  --warning:#fd7e14;
+  --radius:6px;
+  --shadow:0 2px 8px rgba(0,0,0,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:var(--gray-100);color:var(--gray-800);font-size:14px;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--gray-900);color:#fff;display:flex;align-items:center;height:48px;position:sticky;top:0;z-index:200;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.topbar-brand{display:flex;align-items:center;gap:8px;padding:0 20px;height:100%;font-weight:800;font-size:15px;border-right:1px solid rgba(255,255,255,.12);white-space:nowrap;text-decoration:none;color:#fff}
+.topbar-nav{display:flex;height:100%}
+.topbar-nav a{display:flex;align-items:center;padding:0 18px;color:rgba(255,255,255,.65);font-size:13.5px;font-weight:600;text-decoration:none;height:100%;transition:all .15s;border-bottom:2px solid transparent}
+.topbar-nav a:hover{color:#fff;background:rgba(255,255,255,.06)}
+.topbar-nav a.active{color:#fff;border-bottom-color:var(--primary)}
+
+/* CONTENT */
+.content{max-width:1160px;margin:0 auto;padding:22px 20px 60px}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--gray-500);margin-bottom:6px}
+.breadcrumb a{color:var(--gray-600);text-decoration:none}
+.breadcrumb a:hover{color:var(--primary)}
+.page-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap}
+.page-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--gray-500);margin-bottom:4px}
+.page-title{font-size:28px;font-weight:800;color:var(--text-1);line-height:1.2;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--gray-500);font-weight:500}
+.page-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:6px}
+
+/* BADGE trạng thái */
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid transparent}
+.badge-NEW       {background:#e8f0fe;color:#1a56db;border-color:#b6ccf7}
+.badge-CONFIRMED {background:#fff3cd;color:#856404;border-color:#ffe08a}
+.badge-COMPLETED {background:var(--success-light);color:var(--success);border-color:#a3cfbb}
+.badge-CANCELLED {background:var(--danger-light);color:var(--danger);border-color:#f5c6cb}
+
+/* LAYOUT */
+.form-layout{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+
+/* PANEL */
+.panel{background:var(--white);border:1px solid var(--gray-300);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.panel-header{padding:10px 16px;border-bottom:1.5px dashed var(--gray-200);font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gray-600)}
+.panel-body{padding:16px}
+
+/* FORM */
+.frow{display:grid;gap:12px;margin-bottom:12px}
+.frow.c2{grid-template-columns:1fr 1fr}
+.frow.c3{grid-template-columns:1fr 1fr 1fr}
+.frow.c1{grid-template-columns:1fr}
+.frow:last-child{margin-bottom:0}
+.fg{display:flex;flex-direction:column;gap:4px}
+
+label{font-size:12.5px;font-weight:700;color:var(--gray-700)}
+label .req{color:var(--danger);margin-left:2px}
+
+input[type=text],input[type=email],input[type=tel],input[type=number],input[type=date],input[type=time],select,textarea{
+  width:100%;border:1px solid var(--gray-400);border-radius:var(--radius);
+  padding:8px 10px;font-family:inherit;font-size:13.5px;color:var(--gray-800);
+  background:var(--white);outline:none;transition:border-color .15s,box-shadow .15s
+}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,86,219,.12)}
+input.invalid,select.invalid,textarea.invalid{border-color:var(--danger)!important;box-shadow:0 0 0 3px rgba(220,53,69,.10)!important}
+input::placeholder,textarea::placeholder{color:var(--gray-400);font-size:13px}
+textarea{resize:vertical;min-height:72px}
+
+/* CHECKBOX */
+.check-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.check-row input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--primary)}
+.check-row label{font-size:13px;font-weight:600;color:var(--gray-700);cursor:pointer;margin:0}
+
+/* TABLE */
+.ptable{width:100%;border-collapse:collapse;font-size:13px}
+.ptable thead th{background:var(--gray-50);padding:8px 10px;text-align:left;font-weight:700;font-size:12px;color:var(--gray-600);border-bottom:1.5px solid var(--gray-200)}
+.ptable tbody tr{border-bottom:1px solid var(--gray-200)}
+.ptable tbody td{padding:6px 8px;vertical-align:middle}
+.ptable input{padding:6px 8px;font-size:13px}
+.cn{min-width:180px}.cq{width:70px}.cp{width:110px}.ct{width:110px;font-weight:600;color:var(--gray-700)}.cd{width:40px;text-align:center}
+
+.btn-del{background:var(--white);border:1px solid var(--gray-300);border-radius:4px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;color:var(--danger);cursor:pointer;font-size:13px;transition:all .15s}
+.btn-del:hover{background:var(--danger-light);border-color:var(--danger)}
+
+.btn-add-row{display:inline-flex;align-items:center;gap:6px;background:none;border:1px dashed var(--gray-400);border-radius:var(--radius);padding:7px 14px;font-family:inherit;font-size:13px;font-weight:600;color:var(--gray-600);cursor:pointer;margin-top:10px;transition:all .15s}
+.btn-add-row:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+
+/* SUMMARY */
+.summary{margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-200)}
+.srow{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--gray-600);margin-bottom:8px}
+.srow input[type=number]{width:120px;text-align:right;padding:5px 8px;font-size:13px}
+.stotal{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:800;color:var(--gray-900);border-top:1.5px solid var(--gray-300);padding-top:10px;margin-top:4px}
+
+/* NOTE */
+.note-text{font-size:11.5px;color:var(--gray-500);margin-top:4px}
+
+/* ACTION BAR */
+.action-bar{background:var(--white);border:1px solid var(--gray-300);border-radius:var(--radius);padding:14px 20px;display:flex;justify-content:flex-end;align-items:center;gap:10px;grid-column:1/-1}
+.val-note{font-size:12px;color:var(--gray-500);flex:1;font-style:italic}
+.val-note b{color:var(--danger)}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:var(--radius);font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;transition:all .15s;border:none}
+.btn-outline{background:var(--white);border:1.5px solid var(--gray-400);color:var(--gray-700)}
+.btn-outline:hover{border-color:var(--gray-600);color:var(--gray-900)}
+.btn-draft{background:var(--gray-200);border:1.5px solid var(--gray-300);color:var(--gray-700)}
+.btn-draft:hover{background:var(--gray-300)}
+.btn-save{background:var(--gray-900);border:1.5px solid var(--gray-900);color:#fff}
+.btn-save:hover{background:#000}
+.btn-save:disabled{opacity:.6;cursor:not-allowed}
+
+/* SPINNER */
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+
+@media(max-width:860px){
+  .form-layout{grid-template-columns:1fr}
+  .frow.c2,.frow.c3{grid-template-columns:1fr}
+}
+</style>
+
+<script>
+/* ─── CONFIG ──────────────────────────────────────────
+   Khi test standalone (mở file HTML trực tiếp):
+     const API_BASE = 'http://localhost:8080';
+   Khi chạy qua Spring Boot (Thymeleaf):
+     const API_BASE = '';
+──────────────────────────────────────────────────── */
+const API_BASE   = '';          // ← đổi thành 'http://localhost:8080' khi test file trực tiếp
+const ORDERS_URL = '/orders';
+
+/* ─── PRODUCT ROWS ─── */
+let rid = 0;
+
+function addRow() {
+  rid++;
+  const id = rid;
+  const tr = document.createElement('tr');
+  tr.id = 'row-' + id;
+  tr.innerHTML = `
+    <td class="cn"><input type="text" placeholder="Nhập tên SP..."/></td>
+    <td class="cq"><input type="number" value="1" min="1" oninput="calcRow(${id})"/></td>
+    <td class="cp"><input type="number" value="0" min="0" step="1000" oninput="calcRow(${id})"/></td>
+    <td class="ct" id="rt-${id}">0đ</td>
+    <td class="cd">
+      <button class="btn-del" type="button" onclick="delRow(${id})"><i class="bi bi-x"></i></button>
+    </td>`;
+  document.getElementById('ptbody').appendChild(tr);
+  calcSummary();
+}
+
+function delRow(id) {
+  document.getElementById('row-' + id)?.remove();
+  calcSummary();
+}
+
+function calcRow(id) {
+  const row = document.getElementById('row-' + id);
+  if (!row) return;
+  const ns = row.querySelectorAll('input[type=number]');
+  sanitizeMinValue(ns[0], 1);
+  sanitizeMinValue(ns[1], 0);
+  const v  = (parseFloat(ns[0]?.value)||0) * (parseFloat(ns[1]?.value)||0);
+  document.getElementById('rt-' + id).textContent = fmt(v);
+  calcSummary();
+}
+
+function calcSummary() {
+  let sub = 0;
+  document.querySelectorAll('#ptbody tr').forEach(r => {
+    const ns = r.querySelectorAll('input[type=number]');
+    if (ns.length >= 2) {
+      sanitizeMinValue(ns[0], 1);
+      sanitizeMinValue(ns[1], 0);
+      sub += (parseFloat(ns[0].value)||0) * (parseFloat(ns[1].value)||0);
+    }
+  });
+  const shippingFeeEl = document.getElementById('shippingFee');
+  sanitizeMinValue(shippingFeeEl, 0);
+  const ship = parseFloat(shippingFeeEl.value)||0;
+  document.getElementById('subtotal').textContent   = fmt(sub);
+  document.getElementById('grandtotal').textContent = fmt(sub + ship);
+}
+
+function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n) + 'đ'; }
+
+function sanitizeMinValue(input, min = 0) {
+  if (!input) return min;
+  const raw = input.value?.trim();
+  if (raw === '') return min;
+  const value = parseFloat(raw);
+  if (!Number.isFinite(value) || value < min) {
+    input.value = String(min);
+    return min;
+  }
+  return value;
+}
+
+/* ─── VALIDATE ─── */
+function syncPaidCheckboxByPaymentMethod() {
+  const paymentMethod = document.getElementById('paymentMethod')?.value;
+  const paidCheckbox = document.getElementById('paid');
+  if (!paidCheckbox) return;
+
+  if (paymentMethod === 'COD') {
+    paidCheckbox.checked = false;
+    paidCheckbox.disabled = true;
+    paidCheckbox.title = 'Đơn COD sẽ chuyển sang đã thanh toán khi giao thành công.';
+    return;
+  }
+
+  paidCheckbox.disabled = false;
+  paidCheckbox.title = '';
+}
+
+function validate() {
+  let ok = true;
+
+  // 1. Các trường bắt buộc của khách hàng
+  ['customerName', 'phone', 'address'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el.value.trim()) {
+      el.classList.add('invalid');
+      ok = false;
+    } else {
+      el.classList.remove('invalid');
+    }
+  });
+
+  // 2. Kiểm tra sản phẩm (KHÔNG cho phép dòng trống)
+  const rows = document.querySelectorAll('#ptbody tr');
+  let hasProductError = false;
+  let hasEmptyProduct = false;
+
+  rows.forEach(r => {
+    const nameInput = r.querySelector('.cn input[type="text"]');
+    const qtyInput  = r.querySelector('.cq input[type="number"]');
+    const priceInput = r.querySelector('.cp input[type="number"]');
+
+    if (!nameInput) return;
+
+    const name = nameInput.value.trim();
+    const qty  = parseFloat(qtyInput?.value) || 0;
+    const price = parseFloat(priceInput?.value) || 0;
+
+    // Reset invalid
+    nameInput.classList.remove('invalid');
+    if (qtyInput) qtyInput.classList.remove('invalid');
+    if (priceInput) priceInput.classList.remove('invalid');
+
+    if (name === '') {
+      nameInput.classList.add('invalid');
+      hasEmptyProduct = true;
+      ok = false;
+    }
+
+    if (qty <= 0) {
+      if (qtyInput) qtyInput.classList.add('invalid');
+      hasProductError = true;
+      ok = false;
+    }
+
+    if (price < 0) {   // đã ngăn ở oninput, nhưng vẫn kiểm tra phòng trường hợp
+      if (priceInput) priceInput.classList.add('invalid');
+      hasProductError = true;
+      ok = false;
+    }
+  });
+
+  // 3. Phí giao hàng (đã ngăn âm ở oninput)
+  const shippingFeeEl = document.getElementById('shippingFee');
+  shippingFeeEl.classList.remove('invalid');
+
+  if (parseFloat(shippingFeeEl.value) < 0) {
+    shippingFeeEl.classList.add('invalid');
+    ok = false;
+  }
+
+  // Thông báo lỗi
+  if (hasEmptyProduct) {
+    showToast('Vui lòng nhập tên sản phẩm cho tất cả các dòng!', 'err');
+  } else if (hasProductError) {
+    showToast('Số lượng phải > 0 và đơn giá không được âm', 'err');
+  } else if (!ok) {
+    showToast('Vui lòng điền đầy đủ các trường bắt buộc (*)', 'err');
+  }
+
+  return ok;
+}
+
+/* ─── BUILD PAYLOAD ─── */
+function buildPayload() {
+  const rows = [];
+  document.querySelectorAll('#ptbody tr').forEach(r => {
+    const nameEl = r.querySelector('input[type=text]');
+    const nums   = r.querySelectorAll('input[type=number]');
+    rows.push({
+      productName: nameEl?.value.trim() || '',
+      quantity   : parseInt(nums[0]?.value) || 0,
+      price      : parseFloat(nums[1]?.value) || 0
+    });
+  });
+  const tf = document.getElementById('timeFrom').value;
+  const tt = document.getElementById('timeTo').value;
+  const dd = document.getElementById('deliveryDate').value;
+  return {
+    customerName : document.getElementById('customerName').value.trim(),
+    phone        : document.getElementById('phone').value.trim(),
+    email        : document.getElementById('email').value.trim(),
+    address      : document.getElementById('address').value.trim(),
+    status       : document.getElementById('status').value,
+    paymentMethod: document.getElementById('paymentMethod').value,
+    paymentStatus: document.getElementById('paid').checked ? 'Đã thanh toán' : 'Chưa thu',
+    shipperName  : document.getElementById('shipperName').value.trim(),
+    deliveryNote : document.getElementById('deliveryNote').value.trim(),
+    expectedTime : dd ? `${dd} ${tf} – ${tt}` : `${tf} – ${tt}`,
+    shippingFee  : parseFloat(document.getElementById('shippingFee').value)||0,
+    discount     : 0,
+    orderDetails : rows
+  };
+}
+
+/* ─── SUBMIT ─── */
+async function submitOrder() {
+  if (!validate()) return;
+  setLoading(true);
+  try {
+    const res  = await fetch(API_BASE + '/api/orders', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify(buildPayload())
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 201 || res.ok) {
+      showToast('✅ Lưu đơn hàng thành công! ID: ' + (data.id ?? ''), 'ok');
+      setTimeout(() => window.location.href = ORDERS_URL, 1800);
+    } else {
+      showToast('❌ ' + (data.message || 'Lỗi không xác định'), 'err');
+    }
+  } catch {
+    showToast('❌ Không kết nối được server! Kiểm tra backend đang chạy trên port 8080.', 'err');
+  } finally { setLoading(false); }
+}
+
+/* ─── LƯU NHÁP (xem payload) ─── */
+function saveDraft() {
+  const p = buildPayload();
+  console.log('[PAYLOAD JSON]\n' + JSON.stringify(p, null, 2));
+  showToast('📋 Payload đã in ra Console (F12 → Console tab)', 'ok');
+}
+
+function goBack() { window.location.href = ORDERS_URL; }
+
+function setLoading(on) {
+  document.getElementById('submitBtn').disabled      = on;
+  document.getElementById('spin').style.display      = on ? 'block' : 'none';
+  document.getElementById('submitIco').style.display = on ? 'none'  : 'inline';
+}
+
+function showToast(msg, type) {
+  const t = (type === 'ok') ? 'success' : (type === 'err') ? 'error' : (type || 'success');
+  if (typeof window._layoutShowToast === 'function') {
+    window._layoutShowToast(msg, t);
+  } else {
+    const el = document.getElementById('toast');
+    if (el) {
+      document.getElementById('toastIco').textContent = t === 'success' ? '✓' : '✕';
+      document.getElementById('toastMsg').textContent = msg;
+      el.className = 'show ' + t;
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.className = '', 3200);
+    }
+  }
+}
+
+/* ─── CLEAR INVALID ON INPUT ─── */
+['customerName','phone','address'].forEach(id =>
+  document.getElementById(id)?.addEventListener('input', function(){ this.classList.remove('invalid') })
+);
+
+document.getElementById('shippingFee')?.addEventListener('input', function() {
+  sanitizeMinValue(this, 0);
+  this.classList.remove('invalid');
+  calcSummary();
+});
+
+
+/* ─── LOAD SHIPPERS ─── */
+async function loadShippers(selectedName = '') {
+  const sel = document.getElementById('shipperName');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">-- Đang tải... --</option>`;
+  try {
+    const res  = await fetch(API_BASE + '/api/deliveries/shippers');
+    const list = await res.json();
+    if (!Array.isArray(list) || list.length === 0) {
+      sel.innerHTML = `<option value="">-- Chưa có tài xế nào (role SHIPPER) --</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">-- Chưa phân công --</option>` +
+      list.map(s =>
+        `<option value="${s.fullName||''}"` +
+        ` data-phone="${s.phone||''}"` +
+        ` data-vehicle="${s.vehicleInfo||''}"` +
+        ` ${s.fullName === selectedName ? 'selected' : ''}>` +
+        `${s.fullName||''} (${s.username||''})</option>`
+      ).join('');
+  } catch(e) {
+    sel.innerHTML = `<option value="">-- Lỗi tải danh sách tài xế --</option>`;
+    console.error('loadShippers:', e);
+  }
+}
+
+// Khởi động 1 dòng sản phẩm
+addRow();
+loadShippers();
+syncPaidCheckboxByPaymentMethod();
+</script>
+
+</body>
+</html>

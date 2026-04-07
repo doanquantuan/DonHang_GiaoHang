@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" th:fragment="main(title, content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">DeliveryMgr</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+</head>
+<body>
+
+<div th:replace="~{fragments/header :: header}"></div>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+<main th:insert="${content}"></main>
+
+<div id="toast"><div class="t-ico" id="toastIco"></div><span id="toastMsg"></span></div>
+
+<script>
+    // Kiểm tra đăng nhập và lấy tên user
+    document.addEventListener('DOMContentLoaded', function() {
+        const userDataString = localStorage.getItem('loggedInUser');
+        if (!userDataString) {
+            window.location.href = '/login';
+            return;
+        }
+        const user = JSON.parse(userDataString);
+        const name = user.fullName || user.username;
+        document.getElementById('navUsername').textContent = name;
+        document.getElementById('navAvatar').textContent = name.charAt(0).toUpperCase();
+    });
+
+    // Hàm đăng xuất
+    function logout() {
+        if(confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+            localStorage.removeItem('loggedInUser');
+            window.location.href = '/login';
+        }
+    }
+
+    // Mobile drawer
+    function toggleDrawer() {
+        document.getElementById('drawer').classList.toggle('open');
+        document.getElementById('drawerOverlay').classList.toggle('open');
+    }
+
+    // Toast
+    let _toastTimer;
+    function showToast(msg, type = 'success') {
+        const icons = { success: '✓', error: '✕' };
+        document.getElementById('toastIco').textContent = icons[type] || '✓';
+        document.getElementById('toastMsg').textContent = msg;
+        const t = document.getElementById('toast');
+        t.className = 'show ' + type;
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => t.className = '', 3200);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentPath = window.location.pathname;
+        const links = document.querySelectorAll('.nav-links a');
+
+        links.forEach(link => {
+            const href = link.getAttribute('href') || link.getAttribute('th:href');
+            if (href && currentPath.startsWith(href.replace(/@\{|\}/g, ''))) {
+                link.classList.add('active');
+            }
+        });
+    });
+</script>
+</body>
+</html>

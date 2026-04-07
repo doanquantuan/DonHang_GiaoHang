@@ -1,0 +1,23 @@
+### Cập nhật thông tin đơn hàng có ID = 1
+PUT http://localhost:8080/api/orders/1
+Content-Type: application/json
+
+{
+  "customerName": "Nguyễn Văn A - Cập nhật",
+  "phone": "0988888888",
+  "email": "a_update@example.com",
+  "address": "456 Đường Trần Hưng Đạo, Quận 5, TP.HCM",
+  "paymentMethod": "BANK_TRANSFER",
+  "paymentStatus": "PAID",
+  "deliveryNote": "Đã thanh toán qua ngân hàng, giao gấp",
+  "expectedTime": "2026-03-21T09:00:00",
+  "shippingFee": 20000.0,
+  "discount": 50000.0,
+  "orderDetails": [
+    {
+      "productName": "Màn hình Dell UltraSharp",
+      "quantity": 1,
+      "price": 8500000.0
+    }
+  ]
+}

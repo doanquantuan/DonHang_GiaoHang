@@ -158,7 +158,7 @@
           <div class="dc-panel-body" style="display:flex;flex-direction:column;gap:10px">
             <button class="btn btn-primary dc-btn-submit" id="submitBtn" onclick="submitDelivery()">
               <span id="submitSpinner" style="display:none">⏳</span>
-              <span id="submitLabel">🚀 Tạo chuyến giao</span>
+              <span id="submitLabel">Tạo chuyến giao</span>
             </button>
             <button class="btn btn-default" onclick="window.location.href='/deliveries'">
               Huỷ bỏ
@@ -464,7 +464,7 @@ async function submitDelivery() {
 function setLoading(on) {
   document.getElementById('submitBtn').disabled       = on;
   document.getElementById('submitSpinner').style.display = on ? 'inline' : 'none';
-  document.getElementById('submitLabel').textContent  = on ? 'Đang xử lý...' : '🚀 Tạo chuyến giao';
+  document.getElementById('submitLabel').textContent  = on ? 'Đang xử lý...' : 'Tạo chuyến giao';
 }
 function fmt(n)      { return n != null ? new Intl.NumberFormat('vi-VN').format(n) + 'đ' : '—'; }
 function esc(s)      { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

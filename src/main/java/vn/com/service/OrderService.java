@@ -179,7 +179,6 @@ public class OrderService {
 
     @Transactional
     public void deleteOrder(Long id) {
-        Order order = getOrderById(id);
-        orderRepository.delete(order);
+
     }
 }

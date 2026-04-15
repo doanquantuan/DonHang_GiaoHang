@@ -15,7 +15,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             // 1. Tắt CSRF (Bắt buộc phải tắt thì Postman hoặc Frontend mới gọi được POST/PUT/DELETE)
-            //.csrf(AbstractHttpConfigurer::disable)
+            .csrf(AbstractHttpConfigurer::disable)
             
             // 2. Mở cửa cho tất cả các API đi qua (Vì hệ thống mình dùng cơ chế Login tự chế)
             .authorizeHttpRequests(auth -> auth

@@ -177,4 +177,9 @@ public class OrderService {
         return requestedPaymentStatus;
     }
 
+    @Transactional
+    public void deleteOrder(Long id) {
+        Order order = getOrderById(id);
+        orderRepository.delete(order);
+    }
 }

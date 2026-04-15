@@ -177,8 +177,4 @@ public class OrderService {
         return requestedPaymentStatus;
     }
 
-    @Transactional
-    public void deleteOrder(Long id) {
-
-    }
 }
